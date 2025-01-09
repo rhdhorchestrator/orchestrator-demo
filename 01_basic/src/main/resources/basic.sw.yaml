@@ -1,0 +1,52 @@
+id: basic
+version: "1.0"
+specVersion: "0.8"
+name: "basic"
+description: Print input value
+dataInputSchema: schemas/basic__main-schema.json
+extensions:
+  - extensionid: workflow-output-schema
+    outputSchema: schemas/workflow-output-schema.json
+  - extensionid: workflow-uri-definitions
+    definitions:
+      notifications: "https://raw.githubusercontent.com/rhdhorchestrator/serverless-workflows/main/workflows/shared/specs/notifications-openapi.yaml"
+functions:
+  - name: createNotification
+    operation: notifications#createNotification
+  - name: print
+    type: custom
+    operation: sysout
+  - name: successResult
+    type: expression
+    operation: '{
+        "result": {
+          "completedWith":"success",
+          "message": "Project " + .projectName + " active",
+          "outputs":[]
+        }
+      }'
+start: "Print inputs"
+states:
+  - name: Print inputs
+    type: operation
+    actions:
+      - name: "Create notification"
+        functionRef:
+          refName: createNotification
+          arguments:
+            recipients:
+              type: "entity"
+              entityRef: .recipients
+            payload:
+              title: '"Project " + .projectName'
+              description: '"Project " + .projectName'
+              topic: "basic"
+              severity: "normal"
+      - name: setOutput
+        functionRef:
+          refName: successResult
+      - functionRef:
+          refName: print
+          arguments:
+            message: '"Project " + .projectName'
+    end: true
