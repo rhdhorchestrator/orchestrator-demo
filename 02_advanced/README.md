@@ -50,3 +50,145 @@ Use the scripts:
 ./gen-manifest.sh create-ocp-project 02_advanced
 ```
 The manifests location will be displayed by the script.
+
+To apply the manifests, run:
+```
+TARGET_NS=sonataflow-infra
+oc -n ${TARGET_NS} apply -f <path to manifests folder>
+```
+
+Once the manifests are deployed, set the environements variables needed.
+
+To obtain an OpenShift API token, create a Service Account, assign permissions to it, and request a token:
+
+```bash
+oc create sa orchestrator-ocp-api
+oc adm policy add-cluster-role-to-user admin -z orchestrator-ocp-api
+
+# Get the token for use in the next section
+export OCP_API_SERVER_TOKEN=$(oc create token orchestrator-ocp-api)
+```
+
+### Add the Environment Variables to a Secret
+
+Run the following command to update the Secret. Replace the example values with
+the correct values for your environment:
+
+```bash
+export TARGET_NS='sonataflow-infra'
+export WORKFLOW_NAME='create-ocp-project'
+
+export NOTIFICATIONS_BEARER_TOKEN=$(oc get secrets -n rhdh-operator backstage-backend-auth-secret -o go-template='{{ .data.BACKEND_SECRET  }}' | base64 -d)
+export BACKSTAGE_NOTIFICATIONS_URL=http://backstage-backstage.rhdh-operator
+
+export JIRA_API_TOKEN='token_for_jira_api'
+export JIRA_URL='https://replace-me.atlassian.net/'
+export JIRA_USERNAME='foo@bar.com'
+
+export OCP_API_SERVER_URL='https://api.cluster.replace-me.com:6443'
+export OCP_API_SERVER_TOKEN=$(oc create token orchestrator-ocp-api)
+export OCP_CONSOLE_URL='replaceme'
+```
+
+Now, patch the Secret with these values:
+
+```bash
+oc -n $TARGET_NS patch secret "$WORKFLOW_NAME-creds" \
+  --type merge -p "{ \
+    \"stringData\": { \
+      \"NOTIFICATIONS_BEARER_TOKEN\": \"$NOTIFICATIONS_BEARER_TOKEN\",
+      \"JIRA_API_TOKEN\": \"$JIRA_API_TOKEN\",
+      \"OCP_API_SERVER_TOKEN\": \"$OCP_API_SERVER_TOKEN\",
+      \"BACKSTAGE_NOTIFICATIONS_URL\": \"$BACKSTAGE_NOTIFICATIONS_URL\",
+      \"JIRA_URL\": \"$JIRA_URL\",
+      \"JIRA_USERNAME\": \"$JIRA_USERNAME\",
+      \"OCP_API_SERVER_URL\": \"$OCP_API_SERVER_URL\",
+      \"OCP_CONSOLE_URL\": \"$OCP_CONSOLE_URL\"
+    }
+  }"
+```
+
+### Update the Sonataflow CR to use Environment Variables
+
+Once the Secret is updated, the Sonataflow CR for the workflow must be updated
+to use the values. Use the following patch command to update the CR. This will
+restart the Pod:
+
+```bash
+export TARGET_NS='sonataflow-infra'
+export WORKFLOW_NAME='create-ocp-project'
+
+oc -n $TARGET_NS patch sonataflow $WORKFLOW_NAME --type merge -p '{
+  "spec": {
+    "podTemplate": {
+      "container": {
+        "env": [
+          {
+            "name": "BACKSTAGE_NOTIFICATIONS_URL",
+            "valueFrom": {
+              "secretKeyRef": {
+                "name": "create-ocp-project-creds",
+                "key": "BACKSTAGE_NOTIFICATIONS_URL"
+              }
+            }
+          },
+          {
+            "name": "NOTIFICATIONS_BEARER_TOKEN",
+            "valueFrom": {
+              "secretKeyRef": {
+                "name": "create-ocp-project-creds",
+                "key": "NOTIFICATIONS_BEARER_TOKEN"
+              }
+            }
+          },
+          {
+            "name": "JIRA_URL",
+            "valueFrom": {
+              "secretKeyRef": {
+                "name": "create-ocp-project-creds",
+                "key": "JIRA_URL"
+              }
+            }
+          },
+          {
+            "name": "JIRA_USERNAME",
+            "valueFrom": {
+              "secretKeyRef": {
+                "name": "create-ocp-project-creds",
+                "key": "JIRA_USERNAME"
+              }
+            }
+          },
+          {
+            "name": "JIRA_API_TOKEN",
+            "valueFrom": {
+              "secretKeyRef": {
+                "name": "create-ocp-project-creds",
+                "key": "JIRA_API_TOKEN"
+              }
+            }
+          },
+          {
+            "name": "OCP_API_SERVER_URL",
+            "valueFrom": {
+              "secretKeyRef": {
+                "name": "create-ocp-project-creds",
+                "key": "OCP_API_SERVER_URL"
+              }
+            }
+          },
+          {
+            "name": "OCP_CONSOLE_URL",
+            "valueFrom": {
+              "secretKeyRef": {
+                "name": "create-ocp-project-creds",
+                "key": "OCP_CONSOLE_URL"
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}'
+```
