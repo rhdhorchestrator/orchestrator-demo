@@ -9,7 +9,7 @@ WORKFLOW_IMAGE_REGISTRY="${WORKFLOW_IMAGE_REGISTRY:-quay.io}"
 WORKFLOW_IMAGE_NAMESPACE="${WORKFLOW_IMAGE_NAMESPACE:-orchestrator}"
 WORKFLOW_IMAGE_REPO="${WORKFLOW_IMAGE_REPO:-demo-${WORKFLOW_ID}}"
 WORKFLOW_IMAGE_TAG="${WORKFLOW_IMAGE_TAG:-latest}"
-
+ENABLE_PERSISTENCE=true
 # helper binaries should be either on the developer machine or in the helper
 # image quay.io/orchestrator/ubi9-pipeline from setup/Dockerfile, which we use
 # to exeute this script. See the Makefile gen-manifests target.
@@ -54,6 +54,9 @@ if [ -z "$workflow_id" ]; then
   echo "No 'id' property found in the workflow file."
   exit 1
 fi
+
+find manifests/*.yaml -exec yq --inplace '.metadata.namespace = ""' {} \;
+
 
 # the main sonataflow file will have a prefix of variable number, 01 or 02 and so on, because manifests created by
 # gen-manifests are now sorted by name. We need to take *-sonataflow-$workflow_id.yaml to resolve that.
