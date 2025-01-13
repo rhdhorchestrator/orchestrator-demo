@@ -29,9 +29,7 @@ cd "${WORKFLOW_FOLDER}"/src/main/resources
 
 echo -e "\nquarkus.flyway.migrate-at-start=true" >> application.properties
 
-# TODO Update to use --skip-namespace when the following is released
-# https://github.com/apache/incubator-kie-tools/pull/2136
-kn-workflow gen-manifest --namespace ""
+kn-workflow gen-manifest 
 
 # Enable bash's extended blobing for better pattern matching
 shopt -s extglob

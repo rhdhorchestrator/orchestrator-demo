@@ -63,7 +63,7 @@ To obtain an OpenShift API token, create a Service Account, assign permissions t
 
 ```bash
 oc create sa orchestrator-ocp-api
-oc adm policy add-cluster-role-to-user admin -z orchestrator-ocp-api
+oc adm policy add-cluster-role-to-user cluster-admin -z orchestrator-ocp-api
 
 # Get the token for use in the next section
 export OCP_API_SERVER_TOKEN=$(oc create token orchestrator-ocp-api)
@@ -87,7 +87,6 @@ export JIRA_USERNAME='foo@bar.com'
 
 export OCP_API_SERVER_URL='https://api.cluster.replace-me.com:6443'
 export OCP_API_SERVER_TOKEN=$(oc create token orchestrator-ocp-api)
-export OCP_CONSOLE_URL='replaceme'
 ```
 
 Now, patch the Secret with these values:
@@ -102,11 +101,18 @@ oc -n $TARGET_NS patch secret "$WORKFLOW_NAME-creds" \
       \"BACKSTAGE_NOTIFICATIONS_URL\": \"$BACKSTAGE_NOTIFICATIONS_URL\",
       \"JIRA_URL\": \"$JIRA_URL\",
       \"JIRA_USERNAME\": \"$JIRA_USERNAME\",
-      \"OCP_API_SERVER_URL\": \"$OCP_API_SERVER_URL\",
-      \"OCP_CONSOLE_URL\": \"$OCP_CONSOLE_URL\"
+      \"OCP_API_SERVER_URL\": \"$OCP_API_SERVER_URL\"
     }
   }"
 ```
+
+Due to HTTPS self-signed certificates, we have to use a proxy to ignore the Java certification error when interacting the OCP API.
+To do that, we deploy a proxy application that will forward the request (content and headers) to the OCP API:
+```bash
+oc -n $TARGET_NS apply -f resources/proxy.yaml
+```
+
+This deployment uses the `OCP_API_SERVER_URL` value of the secret to set its `TARGET_URL`.
 
 ### Update the Sonataflow CR to use Environment Variables
 
@@ -170,21 +176,7 @@ oc -n $TARGET_NS patch sonataflow $WORKFLOW_NAME --type merge -p '{
           },
           {
             "name": "OCP_API_SERVER_URL",
-            "valueFrom": {
-              "secretKeyRef": {
-                "name": "create-ocp-project-creds",
-                "key": "OCP_API_SERVER_URL"
-              }
-            }
-          },
-          {
-            "name": "OCP_CONSOLE_URL",
-            "valueFrom": {
-              "secretKeyRef": {
-                "name": "create-ocp-project-creds",
-                "key": "OCP_CONSOLE_URL"
-              }
-            }
+            "value": "http://proxy-service"
           }
         ]
       }
@@ -192,3 +184,5 @@ oc -n $TARGET_NS patch sonataflow $WORKFLOW_NAME --type merge -p '{
   }
 }'
 ```
+
+Note that `OCP_API_SERVER_URL` points directly to the  `proxy-service` and not to the `OCP_API_SERVER_URL`.

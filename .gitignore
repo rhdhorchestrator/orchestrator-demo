@@ -3,3 +3,4 @@ kn-workflow
 **/target
 **/.mvn
 **/manifests
+.vscode/**
