@@ -3,7 +3,10 @@ kind: Route
 metadata:
   name: sonataflow-platform-data-index-route
 spec:
+  port:
+    targetPort: h2c
   tls:
+    insecureEdgeTerminationPolicy: Redirect
     termination: edge
   to:
     kind: Service

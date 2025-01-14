@@ -54,7 +54,10 @@ The manifests location will be displayed by the script.
 To apply the manifests, run:
 ```
 TARGET_NS=sonataflow-infra
-oc -n ${TARGET_NS} apply -f <path to manifests folder>
+oc -n ${TARGET_NS} apply -f <path to manifests folder>/00-secret_*.yaml
+oc -n ${TARGET_NS} apply -f <path to manifests folder>/02-configmap_*-props.yaml
+oc -n ${TARGET_NS} apply -f <path to manifests folder>/01-configmap_*.yaml
+oc -n ${TARGET_NS} apply -f <path to manifests folder>/01-sonataflow_*.yaml
 ```
 
 Once the manifests are deployed, set the environements variables needed.
@@ -115,10 +118,19 @@ oc -n $TARGET_NS apply -f resources/proxy.yaml
 This deployment uses the `OCP_API_SERVER_URL` value of the secret to set its `TARGET_URL`.
 
 ### Update the Sonataflow CR to use Environment Variables
+By defualt,the generated `Sonataflow` resource will load and set the environments variables from the secret:
+```
+  podTemplate:
+    container:
+      envFrom:
+        - secretRef:
+            name: create-ocp-project-creds
+```
 
-Once the Secret is updated, the Sonataflow CR for the workflow must be updated
-to use the values. Use the following patch command to update the CR. This will
-restart the Pod:
+In our case, we need to make sure the `OCP_API_SERVER_URL` points directly to the  `proxy-service` and not to the real `OCP_API_SERVER_URL` due to the certificates issue; the Sonataflow CR for the workflow must be updated
+to use the correct value.
+Use the following patch command to update the CR.
+This will restart the Pod:
 
 ```bash
 export TARGET_NS='sonataflow-infra'
@@ -130,51 +142,6 @@ oc -n $TARGET_NS patch sonataflow $WORKFLOW_NAME --type merge -p '{
       "container": {
         "env": [
           {
-            "name": "BACKSTAGE_NOTIFICATIONS_URL",
-            "valueFrom": {
-              "secretKeyRef": {
-                "name": "create-ocp-project-creds",
-                "key": "BACKSTAGE_NOTIFICATIONS_URL"
-              }
-            }
-          },
-          {
-            "name": "NOTIFICATIONS_BEARER_TOKEN",
-            "valueFrom": {
-              "secretKeyRef": {
-                "name": "create-ocp-project-creds",
-                "key": "NOTIFICATIONS_BEARER_TOKEN"
-              }
-            }
-          },
-          {
-            "name": "JIRA_URL",
-            "valueFrom": {
-              "secretKeyRef": {
-                "name": "create-ocp-project-creds",
-                "key": "JIRA_URL"
-              }
-            }
-          },
-          {
-            "name": "JIRA_USERNAME",
-            "valueFrom": {
-              "secretKeyRef": {
-                "name": "create-ocp-project-creds",
-                "key": "JIRA_USERNAME"
-              }
-            }
-          },
-          {
-            "name": "JIRA_API_TOKEN",
-            "valueFrom": {
-              "secretKeyRef": {
-                "name": "create-ocp-project-creds",
-                "key": "JIRA_API_TOKEN"
-              }
-            }
-          },
-          {
             "name": "OCP_API_SERVER_URL",
             "value": "http://proxy-service"
           }
@@ -185,4 +152,7 @@ oc -n $TARGET_NS patch sonataflow $WORKFLOW_NAME --type merge -p '{
 }'
 ```
 
-Note that `OCP_API_SERVER_URL` points directly to the  `proxy-service` and not to the `OCP_API_SERVER_URL`.
+If there is no certificate issue, it is not needed to updated the `Sonataflow` CR. In such case, the pod must be restarted manually to ensure the values we set previsously in the secret are correctly applied:
+```
+oc -n $TARGET_NS scale deploy $WORKFLOW_NAME --replicas=0 && oc -n $TARGET_NS scale deploy $WORKFLOW_NAME --replicas=1
+```

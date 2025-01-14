@@ -42,11 +42,11 @@ states:
               description: '"Project " + .projectName'
               topic: "basic"
               severity: "normal"
-      - name: setOutput
-        functionRef:
-          refName: successResult
       - functionRef:
           refName: print
           arguments:
             message: '"Project " + .projectName'
+      - name: setOutput
+        functionRef:
+          refName: successResult
     end: true

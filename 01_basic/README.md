@@ -34,7 +34,9 @@ The manifests location will be displayed by the script.
 To apply the manifests, run:
 ```
 TARGET_NS=sonataflow-infra
-oc -n ${TARGET_NS} apply -f <path to manifests folder>
+oc -n ${TARGET_NS} apply -f <path to manifests folder>/00-secret_*.yaml
+oc -n ${TARGET_NS} apply -f <path to manifests folder>/02-configmap_*-props.yaml
+oc -n ${TARGET_NS} apply -f <path to manifests folder>/01-sonataflow_*.yaml
 ```
 
 Once the manifests are deployed, set the environements variables needed:

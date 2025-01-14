@@ -4,3 +4,4 @@ kn-workflow
 **/.mvn
 **/manifests
 .vscode/**
+**/manifests/**
