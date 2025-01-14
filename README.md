@@ -19,3 +19,8 @@ It also contains scripts used to build and push the image of the workflow and to
   * a `Deployment` manifest to deploy a proxy application
   * a `Route` manifest to allow access to the DataIndex graphQL endpoint. Note that to access the route, we must delete the NetworkPolicies
 * The `scripts` folder contains the scripts used to build and push the workflow image and to generate the manifests used to deploy the workflow.
+
+## References
+
+* How to deploy workflow in another namespace: https://github.com/rhdhorchestrator/orchestrator-helm-operator/tree/main/docs/release-1.3#additional-workflow-namespaces
+* Developing workflow tutorials: https://redhat-scholars.github.io/serverless-workflow/osl/index.html
