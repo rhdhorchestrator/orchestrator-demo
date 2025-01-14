@@ -23,11 +23,11 @@ Use the scripts:
 * Build and push the image:
 ```
 cd ..
-./build-push.sh basic 01_basic
+./scripts/build-push.sh basic 01_basic
 ```
 * Generate manifests that have to be applied on the OCP cluster wiht RHDH and OSL:
 ```
-./gen-manifest.sh basic 01_basic
+./scripts/gen-manifest.sh basic 01_basic
 ```
 The manifests location will be displayed by the script.
 
