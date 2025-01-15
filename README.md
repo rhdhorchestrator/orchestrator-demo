@@ -10,7 +10,7 @@ It also contains scripts used to build and push the image of the workflow and to
 * having an OCP cluster  with 
   * Red Hat Developer Hub (RHDH) v1.3 
     * Notification plugin 
-    * Orchestrator plugin v1.3
+    * Orchestrator plugin v1.3: https://github.com/rhdhorchestrator/orchestrator-helm-operator/tree/main/docs/release-1.3
   * OpenShift Serverless (OSL) v1.34
 
 ## Repository structure
