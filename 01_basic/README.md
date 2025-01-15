@@ -23,11 +23,11 @@ Use the scripts:
 * Build and push the image:
 ```
 cd ..
-./scripts/build-push.sh basic 01_basic
+WORKFLOW_ID=basic WORKFLOW_FOLDER=01_basic ./scripts/build-push.sh
 ```
 * Generate manifests that have to be applied on the OCP cluster wiht RHDH and OSL:
 ```
-./scripts/gen-manifest.sh basic 01_basic
+WORKFLOW_ID=basic WORKFLOW_FOLDER=01_basic WORKFLOW_IMAGE_REGISTRY=quay.io WORKFLOW_IMAGE_NAMESPACE=orchestrator ./scripts/gen-manifest.sh
 ```
 The manifests location will be displayed by the script.
 

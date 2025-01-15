@@ -6,6 +6,7 @@ It also contains scripts used to build and push the image of the workflow and to
 
 ## Pre-requisites
 * having kn-workflow installed: see https://sonataflow.org/serverlessworkflow/main/testing-and-troubleshooting/kn-plugin-workflow-overview.html
+  * You can find the binary here: https://mirror.openshift.com/pub/cgw/serverless-logic/latest/ 
 * having an OCP cluster  with 
   * Red Hat Developer Hub (RHDH) v1.3 
     * Notification plugin 
@@ -24,3 +25,4 @@ It also contains scripts used to build and push the image of the workflow and to
 
 * How to deploy workflow in another namespace: https://github.com/rhdhorchestrator/orchestrator-helm-operator/tree/main/docs/release-1.3#additional-workflow-namespaces
 * Developing workflow tutorials: https://redhat-scholars.github.io/serverless-workflow/osl/index.html
+* Static token in RHDH/Backstage for the notification plugin: https://backstage.io/docs/auth/service-to-service-auth/#static-tokens

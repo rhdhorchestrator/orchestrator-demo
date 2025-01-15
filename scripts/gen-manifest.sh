@@ -3,13 +3,43 @@
 # always exit if a command fails
 set -o errexit
 
-WORKFLOW_FOLDER=$2
-WORKFLOW_ID=$1
-WORKFLOW_IMAGE_REGISTRY="${WORKFLOW_IMAGE_REGISTRY:-quay.io}"
-WORKFLOW_IMAGE_NAMESPACE="${WORKFLOW_IMAGE_NAMESPACE:-orchestrator}"
+program_name=$0
+
+function usage {
+    echo -e "Usage: WORKFLOW_ID=WORKFLOW_ID WORKFLOW_FOLDER=WORKFLOW_FOLDER WORKFLOW_IMAGE_REGISTRY=WORKFLOW_IMAGE_REGISTRY WORKFLOW_IMAGE_NAMESPACE=WORKFLOW_IMAGE_NAMESPACE [WORKFLOW_IMAGE_REPO=WORKFLOW_IMAGE_REPO] [WORKFLOW_IMAGE_TAG=WORKFLOW_IMAGE_TAG] [ENABLE_PERSISTENCE=true/false] $program_name"
+    echo "  WORKFLOW_ID                   ID of the workflow to build and push"
+    echo "  WORKFLOW_FOLDER               Path of the directory containing the workflow's files"
+    echo "  WORKFLOW_IMAGE_REGISTRY       Registry name to which the image will be pushed. I.E: quay.io"
+    echo "  WORKFLOW_IMAGE_NAMESPACE      Name of the registry's namespace in which store the image. I.E: orchestrator"
+    echo '  WORKFLOW_IMAGE_REPO           Name of the image, optional, default: demo-${WORKFLOW_ID}'
+    echo "  WORKFLOW_IMAGE_TAG            Tag of the image, optional, default: latest"
+    echo "  ENABLE_PERSISTENCE            Boolean indicating if persistence must be enabled, optional, default: true"
+    exit 1
+}
+
+if [[ -z "${WORKFLOW_ID}" ]]; then
+  echo 'Error: WORKFLOW_ID env variable must be set with the ID of the workflow to build and push; e.g: create-ocp-project'
+  usage
+fi
+
+if [[ -z "${WORKFLOW_FOLDER}" ]]; then
+  echo "Error: WORKFLOW_FOLDER env variable must be set to the path of the directory containing the workflow's files; e.g: 02_advanced"
+  usage
+fi
+
+if [[ -z "${WORKFLOW_IMAGE_REGISTRY}" ]]; then
+  echo 'Error: WORKFLOW_IMAGE_REGISTRY env variable must be set with the image registry name; e.g: quay.io'
+  usage
+fi
+
+if [[ -z "${WORKFLOW_IMAGE_NAMESPACE}" ]]; then
+  echo "Error: WORKFLOW_IMAGE_NAMESPACE env variable must be set with the name of the namespace's registry in which store the image; e.g: orchestrator"
+  usage
+fi
+
 WORKFLOW_IMAGE_REPO="${WORKFLOW_IMAGE_REPO:-demo-${WORKFLOW_ID}}"
 WORKFLOW_IMAGE_TAG="${WORKFLOW_IMAGE_TAG:-latest}"
-ENABLE_PERSISTENCE=true
+ENABLE_PERSISTENCE="${ENABLE_PERSISTENCE:-true}"
 # helper binaries should be either on the developer machine or in the helper
 # image quay.io/orchestrator/ubi9-pipeline from setup/Dockerfile, which we use
 # to exeute this script. See the Makefile gen-manifests target.

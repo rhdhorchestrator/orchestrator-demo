@@ -43,11 +43,11 @@ Application properties can be initialized from environment variables before runn
 Use the scripts:
 * Build and push the image:
 ```
-./scripts/build-push.sh create-ocp-project 02_advanced
+WORKFLOW_ID=create-ocp-project  WORKFLOW_FOLDER=02_advanced ./scripts/build-push.sh
 ```
 * Generate manifests that have to be applied on the OCP cluster wiht RHDH and OSL:
 ```
-./scripts/gen-manifest.sh create-ocp-project 02_advanced
+WORKFLOW_ID=create-ocp-project WORKFLOW_FOLDER=02_advanced WORKFLOW_IMAGE_REGISTRY=quay.io WORKFLOW_IMAGE_NAMESPACE=orchestrator ./scripts/gen-manifest.sh
 ```
 The manifests location will be displayed by the script.
 

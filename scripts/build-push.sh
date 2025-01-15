@@ -1,7 +1,23 @@
 #!/bin/bash
+program_name=$0
 
-WORKFLOW_ID=$1
-WORKFLOW_FOLDER=$2
+function usage {
+    echo -e "Usage: WORKFLOW_ID=WORKFLOW_ID WORKFLOW_FOLDER=WORKFLOW_FOLDER $program_name"
+    echo "  WORKFLOW_ID                   ID of the workflow to build and push"
+    echo "  WORKFLOW_FOLDER               Path of the directory containing the workflow's files"
+    exit 1
+}
+
+if [[ -z "${WORKFLOW_ID}" ]]; then
+  echo 'Error: WORKFLOW_ID env variable must be set with the ID of the workflow to build and push; e.g: create-ocp-project'
+  usage
+fi
+
+if [[ -z "${WORKFLOW_FOLDER}" ]]; then
+  echo "Error: WORKFLOW_FOLDER env variable must be set to the path of the directory containing the workflow's files; e.g: 02_advanced"
+  usage
+fi
+
 
 WORKDIR=$(mktemp -d)
 echo "Workdir: ${WORKDIR}"
