@@ -26,3 +26,4 @@ It also contains scripts used to build and push the image of the workflow and to
 * How to deploy workflow in another namespace: https://github.com/rhdhorchestrator/orchestrator-helm-operator/tree/main/docs/release-1.3#additional-workflow-namespaces
 * Developing workflow tutorials: https://redhat-scholars.github.io/serverless-workflow/osl/index.html
 * Static token in RHDH/Backstage for the notification plugin: https://backstage.io/docs/auth/service-to-service-auth/#static-tokens
+* RHDH configuration if running behind a proxy: https://docs.redhat.com/en/documentation/red_hat_developer_hub/1.4/html/configuring/running-behind-a-proxy#running-behind-a-proxy 
