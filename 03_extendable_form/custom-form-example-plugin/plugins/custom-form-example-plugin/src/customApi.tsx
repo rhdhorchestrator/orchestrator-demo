@@ -84,16 +84,10 @@ class CustomFormExtensionsApi implements OrchestratorFormApi {
           JSONSchema7,
           FormContextData
         > = props => <LanguageWidget {...props} countriesUrl={countriesUrl} />;
-        const SelectOcpProjectWidgetWrapper: Widget<
-          JsonObject,
-          JSONSchema7,
-          FormContextData
-        > = props => <SelectOcpProjectWidget {...props} ocpToken={ocpToken} ocpUrl />;
 
         const widgets: RegistryWidgetsType<JsonObject, JSONSchema7, any> = {
           LanguageWidget: LanguageWidgetWrapper,
           CountryWidget: CountryWidgetWrapper,
-          SelectOcpProjectWidget: SelectOcpProjectWidgetWrapper,
         };
 
         const onChange = (data: Data) => {
