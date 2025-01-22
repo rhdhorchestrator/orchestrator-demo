@@ -1,0 +1,1 @@
+export { testFactoryPlugin } from './plugin';
