@@ -131,7 +131,19 @@ yarn publish
 
 In fact, the publish-step is not needed, it just might be helpful way in making the NPM package .tgz file accessible via HTTP at the start-up time of the backstage OCP backstage pod.
 
-To get the .tgz and integrity checksum:
+To get the .tgz and integrity checksum from NPM registry once published:
+
+```bash
+npm view custom-form-example-plugin@0.4.0
+
+...
+.tarball: https://registry.npmjs.org/custom-form-example-plugin/-/custom-form-example-plugin-0.4.0.tgz
+.shasum: 4096d3728dc8cd039833e9cf736a54fcb0064ac0
+.integrity: sha512-r6gt4Wrc0AaMqbag494NZDC0kkMjyXOnZZn/it05Lpf5/mJ8463DoAnEKbRIYcIJm8uQzmTLe9ctnExJbdWG2g==
+...
+```
+
+Or without NPM registry:
 
 ```bash
 cd plugins/custom-form-example-plugin
@@ -149,8 +161,8 @@ data:
       - dynamic-plugins.default.yaml
     plugins:
       - disabled: false
-        package: "https://github.com/rhdhorchestrator/custom-form-example-plugin/releases/download/v0.3.3/custom-form-example-plugin-v0.3.3.tgz"
-        integrity: sha512-hCX6XwWpakV5lO83/zexKdZeiOHXvNLuHaOtoA2PLiwQYuGc9gz75+NEHhaEZ80QUoD1CddoYJjRLqr1rteRLw==
+        package: "https://registry.npmjs.org/custom-form-example-plugin/-/custom-form-example-plugin-0.4.0.tgz"
+        integrity: sha512-r6gt4Wrc0AaMqbag494NZDC0kkMjyXOnZZn/it05Lpf5/mJ8463DoAnEKbRIYcIJm8uQzmTLe9ctnExJbdWG2g==
         pluginConfig:
           dynamicPlugins:
             frontend:
