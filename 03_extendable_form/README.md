@@ -8,13 +8,13 @@ Using following capability, the common data types can be extended for any TypeSc
 
 ## Sample workflow
 For the purpose of the demonstration, a simple [workflow](./src/main/resources/extendable-workflow.sw.yaml) has been created.
-It's scope is intentionally kept at bare minimum, to demonstrate the flow.
+Its scope is intentionally kept at bare minimum, to demonstrate the flow.
 
 ### Prerequisites
 Next steps expect having the OCP, RHDH and the Orchestrator deployed along this sample `extendable_workflow` - refer to the previous 01_basic and 02_advanced topics and use the workflow from this folder.
 
 ### Orientation
-Once having the `extendable_workflow` deployed, it's execution will fail for the beginning. As expected for now.
+Once having the `extendable_workflow` deployed, its execution will fail for the beginning. As expected for now.
 
 Before we "fix" that by deploying the referenced custom components, let's mark the interesting extension points from the workflow perspective.
 
@@ -53,12 +53,12 @@ An example is provided in the [custom-form-example-plugin](./custom-form-example
 ## Developer flow
 From the nature of the task, the development is in the React/TypeScript.
 
-The produced artifact is an RHDH frontend dynamic plugin exporting the requested backstage API implementation.
+The produced artifact is an RHDH frontend dynamic plugin exporting the requested Backstage API implementation.
 
 To boost productivity, it is recommended to develop the API or components in isolation (locally) and deploying the dynamic plugin for final testing in the OCP cluster with RHDH.
 
-### Dev-only backstage instance
-To enable isolated local development, a single-purpose backstage instance is [created](./custom-form-example-plugin) by following [Backstage documentation](https://backstage.io/docs/getting-started/#1-create-your-backstage-app).
+### Dev-only Backstage instance
+To enable isolated local development, a single-purpose Backstage instance is [created](./custom-form-example-plugin) by following [Backstage documentation](https://backstage.io/docs/getting-started/#1-create-your-backstage-app).
 
 Subsequently, a frontend plugin exporting the `OrchestratorFormApi` implementation is created under the `plugins` folder and added to the frontend `packages/app` in the [App.tsx](03_extendable_form/custom-form-example-plugin/packages/app/src/App.tsx).
 
@@ -76,7 +76,7 @@ yarn dev
 
 And navigate to [http://localhost:3000/](http://localhost:3000/). In the left-side menu is a the new plugin as registered through the `packages/app` in the [App.tsx](./custom-form-example-plugin/packages/app/src/App.tsx).
 
-Same as the whole backstage instance, **this page is for the widget development only** and is not part of the resulting plugin.
+Same as the whole Backstage instance, **this page is for the widget development only** and is not part of the resulting plugin.
 
 ### FE plugin with custom extensions
 The plugin entry point: [custom-form-example-plugin/plugins/custom-form-example-plugin/src/plugin.ts](./custom-form-example-plugin/plugins/custom-form-example-plugin/src/plugin.ts).
@@ -97,13 +97,13 @@ By leveraging this principle, we can decorate functionality of the form for othe
 ### Passing configuration
 The Backstage keeps configuration in the `app-config.yaml`, supported by the `dynamic-plugins.yaml` in the context of the RHDH.
 
-When deployed in the OCP, those config files are maintained via ConfigMaps in the `rhdh-operator` project by default.
+When deployed in the OCP, those config files are maintained via ConfigMaps in the target namespace of the Backstage CR.
 
 The administrator can provide various configuration props by modifying these files and ConfigMaps to make them available for the `OrchestratorFormApi` implementation.
 
-Please see the use of the `configApi` Backstage service (an injected dependency to our plugin) and the `config.d.ts` file for an example. Check backstage [documentation](https://backstage.io/docs/conf/reading) for more details.
+Please see the use of the `configApi` Backstage service (an injected dependency to our plugin) and the `config.d.ts` file for an example. Check Backstage [documentation](https://backstage.io/docs/conf/reading) for more details.
 
-The configuration can include URLs to external systems or secrets which are passed as environment variables to the backstage pod.
+The configuration can include URLs to external systems or secrets which are passed as environment variables to the Backstage pod.
 
 ## Form context
 The widget components are optionally provided with the form context - initial or progress values of other fields.
@@ -129,7 +129,7 @@ Based on the deployment needs, this dynamic plugin can be published to an NPM re
 yarn publish
 ```
 
-In fact, the publish-step is not needed, it just might be helpful way in making the NPM package .tgz file accessible via HTTP at the start-up time of the backstage OCP backstage pod.
+In fact, the publish-step is not needed, it just might be helpful way in making the NPM package .tgz file accessible via HTTP at the start-up time of the Backstage OCP pod.
 
 To get the .tgz and integrity checksum from NPM registry once published:
 
@@ -148,7 +148,7 @@ Or without NPM registry:
 ```bash
 cd plugins/custom-form-example-plugin
 yarn pack 
-shasum -b -a 512 custom-form-example-plugin-v0.3.3.tgz | awk '{ print $1 }' | xxd -r -p | base64 | awk '{ printf("%s", $0) }' | awk '{print "sha512-"$0}' ; 
+shasum -b -a 512 custom-form-example-plugin-v0.4.0.tgz | awk '{ print $1 }' | xxd -r -p | base64 | awk '{ printf("%s", $0) }' | awk '{print "sha512-"$0}' ; 
 ```
 
 ### Deployment
@@ -178,11 +178,11 @@ The init container of this pod is responsible for downloading and installing the
 ## Accessing external services
 Per description above, the `OrchestratorFormApi` is solemnly frontend code, meaning it is executed in the browser.
 
-Using common backstage APIs, the widgets can retrieve data from the Backstage services or call the Backstage API.
+Using common Backstage APIs, the widgets can retrieve data from the Backstage services or call the Backstage API.
 An example of receiving two of the Backstage APIs is in the [example plugin](./custom-form-example-plugin/plugins/custom-form-example-plugin/src/plugin.ts).
 
 Access to 3rd party external services (like the OpenShift API) might be affected by either network or CORS limitations.
-To address these issues, a backstage backend plugin exposing new REST endpoints can be implemented to act as a proxy or pre-processor for big data sets.
+To address these issues, a Backstage backend plugin exposing new REST endpoints can be implemented to act as a proxy or pre-processor for big data sets.
 This is out of scope for this demo, we refer to the Backstage documentation for additional details.
 
 ## Limitations
@@ -199,3 +199,4 @@ This is out of scope for this demo, we refer to the Backstage documentation for 
 - [Backstage plugin development](https://backstage.io/docs/plugins/structure-of-a-plugin)
 - [RHDH dynamic plugins development](https://docs.redhat.com/en/documentation/red_hat_developer_hub/1.4/#Extend)
 - [JSON Schema](https://json-schema.org/understanding-json-schema/reference)
+- [react-jsonschema-form](https://github.com/rjsf-team/react-jsonschema-form)
