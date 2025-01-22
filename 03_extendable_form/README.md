@@ -60,7 +60,7 @@ To boost productivity, it is recommended to develop the API or components in iso
 ### Dev-only Backstage instance
 To enable isolated local development, a single-purpose Backstage instance is [created](./custom-form-example-plugin) by following [Backstage documentation](https://backstage.io/docs/getting-started/#1-create-your-backstage-app).
 
-Subsequently, a frontend plugin exporting the `OrchestratorFormApi` implementation is created under the `plugins` folder and added to the frontend `packages/app` in the [App.tsx](03_extendable_form/custom-form-example-plugin/packages/app/src/App.tsx).
+Subsequently, a frontend plugin exporting the `OrchestratorFormApi` implementation is created under the `plugins` folder and added to the frontend `packages/app` in the [App.tsx](./custom-form-example-plugin/packages/app/src/App.tsx).
 
 In other words, we use upstream Backstage with a static frontend plugin for development.
 

@@ -48,8 +48,8 @@ const customValidate = (
     errors.personalInfo?.password?.addError('passwords do not match');
   }
 
-  if ((_formData?.personalInfo?.password?.length || 0) < 5) {
-    errors.personalInfo?.password?.addError('password length minimal length is 5');
+  if ((_formData?.personalInfo?.password?.length || 0) < 10) {
+    errors.personalInfo?.password?.addError('password length minimal length is 10');
   }
 
   return errors;
