@@ -40,22 +40,28 @@ const customValidate = (
   errors: FormValidation<Data>,
 ): FormValidation<JsonObject> => {
   const _formData = formData as Data | undefined;
+
   if (
     _formData?.personalInfo?.password !==
     _formData?.personalInfo?.confirmPassword
   ) {
-    errors.personalInfo?.password?.addError('passwords do not match.');
+    errors.personalInfo?.password?.addError('passwords do not match');
   }
+
+  if ((_formData?.personalInfo?.password?.length || 0) < 5) {
+    errors.personalInfo?.password?.addError('password length minimal length is 5');
+  }
+
   return errors;
 };
 
 class CustomFormExtensionsApi implements OrchestratorFormApi {
   private readonly configApi: ConfigApi;
-  private readonly fetchApi: FetchApi;
+  // private readonly fetchApi: FetchApi;
 
   public constructor(options: { configApi: ConfigApi; fetchApi: FetchApi }) {
     this.configApi = options.configApi;
-    this.fetchApi = options.fetchApi;
+    // this.fetchApi = options.fetchApi;
   }
 
   getFormDecorator(
@@ -114,6 +120,7 @@ class CustomFormExtensionsApi implements OrchestratorFormApi {
 
                 if (reservedNames.includes(_formData.personalInfo?.firstName)) {
                   errors.personalInfo = {
+                    // @ts-ignore
                     firstName: {
                       __errors: [
                         `Name ${_formData.personalInfo?.firstName} is reserved`,
