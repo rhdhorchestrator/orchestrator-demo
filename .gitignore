@@ -1,7 +1,5 @@
 kn
 kn-workflow
 **/target
-**/manifests
 .vscode/**
-**/manifests/**
 **/.idea

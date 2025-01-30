@@ -255,7 +255,7 @@ spec:
       name: Generating Deployment Resources
       action: fetch:template
       input:
-        url: ./manifests
+        url: ./manifests/
         copyWithoutTemplating: []
         values:
           component_id: ${{ parameters.artifactId }}
@@ -264,7 +264,6 @@ spec:
           source_repository: https://github.com/${{ parameters.orgName }}/${{parameters.repoName}}.git
           repository_name: ${{parameters.repoName}}
           git_owner: ${{ parameters.owner }}
-          cluster: .apps.cluster-lqhhl.sandbox3194.opentlc.com
           namespace: ${{ parameters.artifactId }}-dev
           port: 8080
           repository_host: github.com

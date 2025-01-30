@@ -1,0 +1,130 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+  labels:
+    app: ${{ values.component_id }}
+    app.kubernetes.io/component: web
+    app.kubernetes.io/instance: ${{ values.component_id }}
+    app.kubernetes.io/name: ${{ values.component_id }}
+    app.kubernetes.io/part-of: ${{ values.component_id }}
+    app.openshift.io/runtime: java
+  name: ${{ values.component_id }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ${{ values.component_id }}
+  template:
+    metadata:
+      labels:
+        app: ${{ values.component_id }}
+    spec:
+      containers:
+      - name: ${{ values.component_id }}
+        imagePullPolicy: Always
+        image: ${{ values.image }}
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /
+            port: 8080
+            scheme: HTTP
+          initialDelaySeconds: 45
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        ports:
+        - containerPort: 8080
+          protocol: TCP
+        - containerPort: 8443
+          protocol: TCP
+        - containerPort: 8778
+          protocol: TCP
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /
+            port: 8080
+            scheme: HTTP
+          initialDelaySeconds: 45
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5          
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgresql
+  labels:
+    app: ${{ values.component_id }}
+    app.kubernetes.io/component: database
+    app.kubernetes.io/instance: ${{ values.component_id }}
+    app.kubernetes.io/name: postgresql
+    app.kubernetes.io/part-of: ${{ values.component_id }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ${{ values.component_id }}
+      name: postgresql
+  template:
+    metadata:
+      labels:
+        app: ${{ values.component_id }}
+        name: postgresql
+    spec:
+      containers:
+      - name: postgresql
+        imagePullPolicy: Always
+        image: registry.redhat.io/rhel8/postgresql-12:latest
+        env:
+        - name: POSTGRESQL_USER
+          value: petclinic
+        - name: POSTGRESQL_PASSWORD
+          value: petclinic
+        - name: POSTGRESQL_DATABASE
+          value: petclinic
+        - name: POSTGRESQL_MAX_CONNECTIONS
+          value: "100"
+        - name: POSTGRESQL_SHARED_BUFFERS
+          value: 12MB
+        - name: POSTGRESQL_ADMIN_PASSWORD
+          value: petclinic
+        ports:
+        - containerPort: 5432
+        livenessProbe:
+          initialDelaySeconds: 30
+          tcpSocket:
+            port: 5432
+          timeoutSeconds: 1
+          failureThreshold: 10
+          periodSeconds: 20
+        readinessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -i
+            - -c
+            - psql -h 127.0.0.1 -U ${POSTGRESQL_USER} -q -d ${POSTGRESQL_DATABASE} -c 'SELECT 1'
+        resources:
+          limits:
+            memory: 512Mi
+        volumeMounts:
+        - mountPath: /var/lib/pgsql/data
+          name: postgres-data
+      volumes:
+      - name: postgres-data
+        persistentVolumeClaim:
+          claimName: postgres-data
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-data
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
