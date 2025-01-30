@@ -1,0 +1,22 @@
+---
+postgresql_databases: [petclinic]
+
+postgresql_users:
+  - { db: petclinic, name: petclinic, password: "{{ vault_postgresql_petclinic_password }}" }
+
+postgresql_schemas:
+  - { db: petclinic, name: petclinic, owner: petclinic }
+
+postgresql_privs:
+  - { db: petclinic, roles: petclinic, privs: ALL, type: database }
+
+postgresql_hba_entries:
+  - { contype: local, databases: all, users: all,                        method: peer          }
+  - { contype: host,  databases: petclinic, users: petclinic,  address: samenet, method: scram-sha-256 }
+
+postgresql_extensions:
+  - { db: petclinic, name: hstore }
+
+postgresql_listen_addresses: "*"
+
+postgresql_conf_path: "/var/lib/pgsql/data/postgresql.conf"

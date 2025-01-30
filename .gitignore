@@ -5,3 +5,4 @@ kn-workflow
 **/manifests
 .vscode/**
 **/manifests/**
+**/.idea

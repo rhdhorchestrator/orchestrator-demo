@@ -1,0 +1,26 @@
+---
+- name: Stop and delete PostgreSQL container on Podman
+  hosts: node2
+  become: true  # Escalate privileges to perform actions as a different user
+  tasks:
+    
+    - name: Stop PostgreSQL container
+      become_user: ec2-user  # Run this task as the ec2-user
+      command: podman stop postgresql-target
+      ignore_errors: yes  # Ignore errors if the container is not running
+
+    - name: Delete PostgreSQL container
+      become_user: ec2-user  # Run this task as the ec2-user
+      command: podman rm postgresql-target
+      ignore_errors: yes  # Ignore errors if the container doesn't exist
+
+    - name: Verify the container is deleted
+      become_user: ec2-user  # Verify as ec2-user
+      command: podman ps -a -f name=postgresql-target
+      register: container_status
+
+    - name: Display verification result
+      debug:
+        var: container_status.stdout
+
+
