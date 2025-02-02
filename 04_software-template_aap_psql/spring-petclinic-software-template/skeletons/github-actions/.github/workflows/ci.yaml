@@ -8,14 +8,14 @@ on:
 env:
   IMAGE_NAME: ${{ github.event.repository.name }}
   IMAGE_TAGS: latest ${{ github.sha }}
-  IMAGE_REGISTRY: quay.io
+  IMAGE_REGISTRY: ${{ secrets.REGISTRY_URI }}
   IMAGE_NAMESPACE: ${{ secrets.REGISTRY_NAMESPACE }}
   USERNAME: ${{ secrets.REGISTRY_USERNAME }}
   PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
 
 jobs:
   build-and-push-image:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
       packages: write
@@ -47,3 +47,27 @@ jobs:
           image: ${{ steps.build-image.outputs.image }}
           tags: ${{ steps.build-image.outputs.tags }}
           registry: ${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAMESPACE }}
+ 
+      - name: Update Image Digest
+        id: update-image-digest
+        uses: actions/checkout@v4
+        with:
+          repository: ${{secrets.GITOPS_REPO}}
+          token: ${{secrets.REPO_TOKEN}}
+
+      - name: Update Image Tag Values
+        run: |
+          chart_dir="helm"
+          new_image_tag=${{ github.sha }}
+
+          # Update the values.yaml file with the new image tag
+          sed -i "s/^  tag: .*/  tag: $new_image_tag/" "$chart_dir/values.yaml"      
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v5
+        id: cpr
+        with:
+          title: Update Spring Petclinic image digest
+          branch: update-image-${{ github.sha }}
+          commit-message: update backend image tag to ${{ steps.build-image.outputs.image }}
+          token: ${{secrets.REPO_TOKEN}}

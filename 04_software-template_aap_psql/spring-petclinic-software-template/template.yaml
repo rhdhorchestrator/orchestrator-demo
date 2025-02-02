@@ -84,9 +84,9 @@ spec:
           title: Select a CI method
           type: string
           description: This action will create a CI pipeline for your application based on chosen method
-          default: ./github-actions/
+          default: ./skeletons/github-actions/
           enum:
-            - ./github-actions/
+            - ./skeletons/github-actions/
             - ./skeletons/tekton/
           enumNames:
             - GitHub Action
@@ -101,7 +101,7 @@ spec:
                 - quayPassword
               properties:
                 ci:
-                  const: ./github-actions/
+                  const: ./skeletons/github-actions/
                 imageRepository:
                   title: Select a registry
                   type: string
@@ -157,7 +157,7 @@ spec:
       name: Generating the Source Code Component
       action: fetch:template
       input:
-        url: ./app-skeleton
+        url: ./skeletons/app
         copyWithoutTemplating:
           - src/main/resources/
         values:
