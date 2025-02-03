@@ -1,0 +1,295 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: my-spring-petclinic-template
+  title: Create a Spring Pet Clinic application with GitHub Action & Argo CD
+  description: Create a Spring Pet Clinic application with GitHub Action & Argo CD
+  tags:
+    - recommended
+    - spring
+    - java
+    - maven
+spec:
+  owner: janus-orchestrator
+  system: janus-idp
+  type: service
+
+  parameters:
+    - title: Provide information about the new component
+      required:
+        - orgName
+        - repoName
+        - owner
+        - system
+        - port
+      properties:
+        orgName:
+          title: Organization Name
+          type: string
+        repoName:
+          title: Repository Name
+          type: string
+        description:
+          title: Description
+          type: string
+          description: Help others understand what this component is for
+        owner:
+          title: Owner
+          type: string
+          ui:field: EntityPicker
+          ui:options:
+            catalogFilter:
+              kind:
+                - Group
+                - User
+        system:
+          title: System
+          type: string
+          ui:field: EntityPicker
+          ui:options:
+            catalogFilter:
+              kind:
+                - System
+        port:
+          title: Port
+          type: number
+          default: 8080
+          description: Override the port exposed for the application
+    - title: Provide information about the Java metadata
+      required:
+        - groupId
+        - artifactId
+        - javaPackageName
+      properties:
+        groupId:
+          title: Group ID
+          type: string
+          default: org.springframework.samples
+          description: Maven Group ID eg (io.janus)
+        artifactId:
+          title: Artifact ID
+          type: string
+          default: spring-petclinic
+          description: Maven Artifact ID
+        javaPackageName:
+          title: Java Package Namespace
+          type: string
+          default: org/springframework/samples/petclinic
+          description: Name for the Java Package (ensure to use the / character as this is used for folder structure) should match Group ID and Artifact ID
+    - title: Provide information about the CI method
+      required:
+        - ci
+      properties:
+        ci:
+          title: Select a CI method
+          type: string
+          description: This action will create a CI pipeline for your application based on chosen method
+          default: ./skeletons/github-actions/
+          enum:
+            - ./skeletons/github-actions/
+            - ./skeletons/tekton/
+          enumNames:
+            - GitHub Action
+            - Tekton
+      dependencies:
+        ci:
+          oneOf:
+            - required:
+                - imageRepository
+                - imageNamespace
+                - quayUserName
+                - quayPassword
+              properties:
+                ci:
+                  const: ./skeletons/github-actions/
+                imageRepository:
+                  title: Select a registry
+                  type: string
+                  default: quay.io
+                  enum:
+                    - quay.io
+                    - image-registry.openshift-image-registry.svc:5000
+                  enumNames:
+                    - Quay
+                    - Internal OpenShift Registry
+                imageNamespace:
+                  title: Quay.io Namespace
+                  type: string
+                  description: The Quay.io namespace or organization
+                  ui:field: Secret
+                quayUserName:
+                  title: Quay.io username
+                  type: string
+                  description: The Quay.io username
+                  ui:field: Secret
+                quayPassword:
+                  title: Quay password
+                  type: string
+                  description: The Quay.io password / token
+                  ui:field: Secret
+            - required:
+                - imageRepository
+                - namespace
+                - imageUrl
+              properties:
+                ci:
+                  const: ./skeletons/tekton/
+                imageRepository:
+                  title: Select a registry
+                  type: string
+                  default: quay.io
+                  enum:
+                    - quay.io
+                    - image-registry.openshift-image-registry.svc:5000
+                  enumNames:
+                    - Quay
+                    - Internal OpenShift Registry
+                imageUrl:
+                  title: Image URL
+                  type: string
+                  description: The Quay.io or OpenShift Image URL <REGISTRY>/<IMAGE_URL>/<REPO_NAME>
+                namespace:
+                  title: Namespace
+                  type: string
+                  description: The namespace for deploying resources
+  steps:
+    - id: sourceCodeTemplate
+      name: Generating the Source Code Component
+      action: fetch:template
+      input:
+        url: ./skeletons/app
+        copyWithoutTemplating:
+          - src/main/resources/
+        values:
+          orgName: ${{ parameters.orgName }}
+          repoName: ${{ parameters.repoName }}
+          owner: ${{ parameters.owner }}
+          system: ${{ parameters.system }}
+          applicationType: api
+          description: ${{ parameters.description }}
+          namespace: ${{ parameters.artifactId }}-dev
+          imageUrl: ${{ parameters.imageUrl }}
+          imageBuilder: s2i-java
+          imageRepository: ${{ parameters.imageRepository }}
+          port: ${{ parameters.port }}
+          ci: ${{ parameters.ci }}
+          groupId: ${{ parameters.groupId }}
+          artifactId: ${{ parameters.artifactId }}
+          javaPackageName: ${{ parameters.javaPackageName }}
+          sourceControl: github.com
+
+    - id: ciTemplate
+      name: Generating the CI Component
+      action: fetch:template
+      input:
+        url: ${{ parameters.ci }}
+        copyWithoutTemplating:
+          - .github/workflows/
+        values:
+          orgName: ${{ parameters.orgName }}
+          repoName: ${{ parameters.repoName }}
+          owner: ${{ parameters.owner }}
+          system: ${{ parameters.system }}
+          applicationType: api
+          description: ${{ parameters.description }}
+          namespace: ${{ parameters.artifactId }}-dev
+          imageUrl: ${{ parameters.imageUrl }}
+          imageBuilder: s2i-java
+          imageRepository: ${{ parameters.imageRepository }}
+          port: ${{ parameters.port }}
+          ci: ${{ parameters.ci }}
+          groupId: ${{ parameters.groupId }}
+          artifactId: ${{ parameters.artifactId }}
+          javaPackageName: ${{ parameters.javaPackageName }}
+          sourceControl: github.com
+
+    - id: catalogTemplate
+      name: Generating the Catalog Info Component
+      action: fetch:template
+      input:
+        url: ./skeletons/catalog-info/
+        values:
+          orgName: ${{ parameters.orgName }}
+          repoName: ${{ parameters.repoName }}
+          owner: ${{ parameters.owner }}
+          system: ${{ parameters.system }}
+          applicationType: api
+          description: ${{ parameters.description }}
+          namespace: ${{ parameters.artifactId }}-dev
+          label: ${{ parameters.artifactId }}
+          imageUrl: ${{ parameters.imageUrl }}
+          imageBuilder: s2i-java
+          imageRepository: ${{ parameters.imageRepository }}
+          port: ${{ parameters.port }}
+          ci: ${{ parameters.ci }}
+          groupId: ${{ parameters.groupId }}
+          artifactId: ${{ parameters.artifactId }}
+          javaPackageName: ${{ parameters.javaPackageName }}
+          sourceControl: github.com
+
+    - id: publish
+      name: Publishing to the Source Code Repository
+      action: publish:github
+      input:
+        allowedHosts: ["github.com"]
+        description: ${{ parameters.description }}
+        repoUrl: github.com?owner=${{ parameters.orgName }}&repo=${{ parameters.repoName }}
+        defaultBranch: main
+        repoVisibility: public
+        requiredApprovingReviewCount: 0
+        secrets:
+          REGISTRY_NAMESPACE: "${{ secrets.imageNamespace }}"
+          REGISTRY_USERNAME: "${{ secrets.quayUserName }}"
+          REGISTRY_PASSWORD: "${{ secrets.quayPassword }}"
+          REGISTRY_URI: "${{ parameters.imageRepository }}"
+          GITOPS_REPO: "${{ parameters.orgName }}/${{parameters.repoName}}-gitops"
+
+    - id: register
+      name: Registering the Catalog Info Component
+      action: catalog:register
+      input:
+        repoContentsUrl: ${{ steps.publish.output.repoContentsUrl }}
+        catalogInfoPath: /catalog-info.yaml
+
+    - id: template-gitops-deployment
+      name: Generating Deployment Resources
+      action: fetch:template
+      input:
+        url: ./manifests/
+        copyWithoutTemplating: []
+        values:
+          component_id: ${{ parameters.artifactId }}
+          description: ${{ parameters.description }}
+          destination: https://github.com/${{ parameters.orgName }}/${{parameters.repoName}}-gitops.git
+          source_repository: https://github.com/${{ parameters.orgName }}/${{parameters.repoName}}.git
+          repository_name: ${{parameters.repoName}}
+          git_owner: ${{ parameters.owner }}
+          namespace: ${{ parameters.artifactId }}-dev
+          port: 8080
+          repository_host: github.com
+          deployment_name: spring-petclinic-template
+          image: quay.io/${{ secrets.imageNamespace }}/${{ parameters.repoName }}
+          tag: latest
+          user: ${{ parameters.owner }}
+        targetPath: ./tenant-gitops
+
+    - id: publish-gitops
+      name: Publishing to Resource Repository
+      action: publish:github
+      input:
+        allowedHosts: ["github.com"]
+        repoUrl: github.com?owner=${{ parameters.orgName }}&repo=${{ parameters.repoName }}-gitops
+        title: gitops resources for ${{ parameters.artifactId }}
+        description: gitops resources for ${{ parameters.description }}
+        sourcePath: ./tenant-gitops
+        defaultBranch: main
+        repoVisibility: public
+        requiredApprovingReviewCount: 0
+
+  output:
+    links:
+      - title: Open the Source Code Repository
+        url: ${{ steps.publish.output.remoteUrl }}
+      - title: Open the Catalog Info Component
+        icon: catalog
+        entityRef: ${{ steps.register.output.entityRef }}

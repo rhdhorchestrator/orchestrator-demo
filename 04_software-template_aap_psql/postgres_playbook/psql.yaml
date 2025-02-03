@@ -1,0 +1,108 @@
+---
+- hosts: localhost
+  collections:
+    - kubernetes.core
+  tasks:
+    - name: Create a PVC 
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: PersistentVolumeClaim
+          metadata:
+            name: postgres-data
+            namespace: "{{ targetNamespace }}"
+          spec:
+            accessModes:
+            - ReadWriteOnce
+            resources:
+              requests:
+                storage: 1Gi
+    - name: Create a PSQL deployment
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: postgresql
+            namespace: "{{ targetNamespace }}"
+            labels:
+              app: spring-petclinic
+              app.kubernetes.io/component: database
+              app.kubernetes.io/instance: spring-petclinic
+              app.kubernetes.io/name: postgresql
+              app.kubernetes.io/part-of: spring-petclinic
+          spec:
+            replicas: 1
+            selector:
+              matchLabels:
+                app: spring-petclinic
+                name: postgresql
+            template:
+              metadata:
+                labels:
+                  app: spring-petclinic
+                  name: postgresql
+              spec:
+                containers:
+                - name: postgresql
+                  imagePullPolicy: Always
+                  image: registry.redhat.io/rhel8/postgresql-12:latest
+                  env:
+                  - name: POSTGRESQL_USER
+                    value: petclinic
+                  - name: POSTGRESQL_PASSWORD
+                    value: petclinic
+                  - name: POSTGRESQL_DATABASE
+                    value: petclinic
+                  - name: POSTGRESQL_MAX_CONNECTIONS
+                    value: "100"
+                  - name: POSTGRESQL_SHARED_BUFFERS
+                    value: 12MB
+                  - name: POSTGRESQL_ADMIN_PASSWORD
+                    value: petclinic
+                  ports:
+                  - containerPort: 5432
+                  livenessProbe:
+                    initialDelaySeconds: 30
+                    tcpSocket:
+                      port: 5432
+                    timeoutSeconds: 1
+                    failureThreshold: 10
+                    periodSeconds: 20
+                  readinessProbe:
+                    exec:
+                      command:
+                      - /bin/sh
+                      - -i
+                      - -c
+                      - psql -h 127.0.0.1 -U ${POSTGRESQL_USER} -q -d ${POSTGRESQL_DATABASE} -c 'SELECT 1'
+                  resources:
+                    limits:
+                      memory: 512Mi
+                  volumeMounts:
+                  - mountPath: /var/lib/pgsql/data
+                    name: postgres-data
+                volumes:
+                - name: postgres-data
+                  persistentVolumeClaim:
+                    claimName: postgres-data
+    - name: Create a service 
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Service
+          metadata:
+            annotations:
+              description: Exposes the database server
+            name: postgresql
+            namespace: "{{ targetNamespace }}"
+          spec:
+            ports:
+            - name: postgresql
+              port: 5432
+              targetPort: 5432
+            selector:
+              name: postgresql

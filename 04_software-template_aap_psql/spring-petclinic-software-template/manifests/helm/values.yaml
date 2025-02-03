@@ -1,0 +1,6 @@
+petclinic:
+  # This image tag can be automatically updated by invoking the workflow
+  # included in this repository 
+  image: ${{ values.image }}
+  tag: latest 
+  replicas: 1

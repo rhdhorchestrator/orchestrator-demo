@@ -1,0 +1,22 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ${{ values.component_id }}-dev
+spec:
+  destination:
+    namespace: ${{ values.component_id }}-dev
+    server: https://kubernetes.default.svc
+  project: janus
+  source:
+    helm:
+      valueFiles:
+       - values.yaml
+    path: helm
+    repoURL: ${{ values.destination }}
+    targetRevision: main
+  syncPolicy:
+    syncOptions:
+    - CreateNamespace=true
+    automated:
+      prune: true
+      selfHeal: true

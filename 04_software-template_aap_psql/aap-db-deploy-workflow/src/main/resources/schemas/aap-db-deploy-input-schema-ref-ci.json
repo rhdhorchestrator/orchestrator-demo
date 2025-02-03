@@ -1,0 +1,36 @@
+{
+  "$id": "classpath:/schemas/aap-db-deploy-input-schema-ref-ci.json",
+  "title": "Provide information about the CI method",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "properties": {
+    "ciMethod": {
+      "title": "Select a CI method",
+      "type": "string",
+      "description": "This action will create a CI pipeline for your application based on chosen method",
+      "enum": [
+        "./skeletons/github-actions/",
+        "./skeletons/tekton/"
+      ],
+      "default": "./skeletons/github-actions/"
+    },
+    "imageRepository": {
+      "title": "Select a registry",
+      "type": "string",
+      "enum": [
+        "quay.io",
+        "image-registry.openshift-image-registry.svc:5000"
+      ],
+      "default": "quay.io"
+    },
+    "imageNamespace": {
+      "title": "Quay.io Namespace",
+      "type": "string",
+      "description": "The Quay.io namespace or organization"
+    }
+  },
+  "required": [
+    "ciMethod",
+    "imageRepository",
+    "imageNamespace"
+  ]
+}
