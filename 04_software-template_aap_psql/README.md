@@ -160,3 +160,25 @@ With `ARGOCD_NAMESPACE` being the target namespace in which ArgoCD must deploy t
 Once the workflow's pods are ready, use the RHDH Orchestrator plugin to invoke the workflow.
 Monitor the Results pane and notifications for workflow execution progress.
 
+## Running the Demo
+Once everything is configured, use the Orchestrator plugin to run the workflow, watch for notifications and the results pane of the workflow's run.
+
+## Cleanup
+In order to tear-down the resources created by the demo, the following should be executed:
+
+* Clean K8s resources from the cluster:
+```bash
+ARGOCD_NAMESPACE=spring-petclinic-dev
+oc delete applications.argoproj.io -n openshift-gitops $ARGOCD_NAMESPACE
+oc delete svc -n $ARGOCD_NAMESPACE --all
+oc delete route -n --all
+oc delete deployment -n $ARGOCD_NAMESPACE --all
+```
+
+* Remove GitHub repositories:
+```bash
+GITHUB_ORGANIZATION=test-workflows
+gh repo list $GITHUB_ORGANIZATION --limit 200 | awk '{print $1}' | xargs -I {} gh repo delete {} --yes
+```
+
+* Unregister the component from RHDH software catalog.
