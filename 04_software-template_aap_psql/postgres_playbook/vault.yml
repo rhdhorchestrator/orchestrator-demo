@@ -1,3 +1,0 @@
----
-vault_postgresql_petclinic_password: "petclinic"
-vault_postgresql_foobar_password: "foobar"
