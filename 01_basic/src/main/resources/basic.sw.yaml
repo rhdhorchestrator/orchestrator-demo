@@ -19,11 +19,11 @@ functions:
   - name: successResult
     type: expression
     operation: '{
-        "result": {
-          "completedWith":"success",
-          "message": "Project " + .projectName + " active",
-          "outputs":[]
-        }
+      "result": {
+      "completedWith":"success",
+      "message": "Project " + .projectName + " active",
+      "outputs":[]
+      }
       }'
 start: "Print inputs"
 states:
