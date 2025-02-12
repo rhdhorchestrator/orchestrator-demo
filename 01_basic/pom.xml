@@ -1,31 +1,33 @@
 <?xml version="1.0"?>
-<project xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd" xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+<project
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd"
+    xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
     <modelVersion>4.0.0</modelVersion>
     <groupId>io.janus.workflow.basic</groupId>
     <artifactId>basic</artifactId>
     <version>1.0.0-SNAPSHOT</version>
     <repositories>
-    <repository>
-      <releases>
-        <enabled>true</enabled>
-      </releases>
-      <snapshots>
-        <enabled>false</enabled>
-      </snapshots>
-      <id>redhat</id>
-      <url>https://maven.repository.redhat.com/ga</url>
+        <repository>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+            <id>redhat</id>
+            <url>https://maven.repository.redhat.com/ga</url>
         </repository>
     </repositories>
     <pluginRepositories>
         <pluginRepository>
-        <releases>
-            <enabled>true</enabled>
-        </releases>
-        <snapshots>
-            <enabled>false</enabled>
-        </snapshots>
-        <id>redhat</id>
-        <url>https://maven.repository.redhat.com/ga</url>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+            <id>redhat</id>
+            <url>https://maven.repository.redhat.com/ga</url>
         </pluginRepository>
     </pluginRepositories>
     <properties>
@@ -98,6 +100,14 @@
             <artifactId>sonataflow-quarkus-devui</artifactId>
             <version>9.100.0.redhat-00004</version>
         </dependency>
+        <!--<dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-oidc-client-filter</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-oidc-token-propagation</artifactId>
+        </dependency>-->
         <dependency>
             <groupId>org.kie</groupId>
             <artifactId>kogito-addons-quarkus-data-index-inmemory</artifactId>
@@ -165,7 +175,8 @@
                 </executions>
                 <configuration>
                     <systemPropertyVariables>
-                        <native.image.path>${project.build.directory}/${project.build.finalName}-runner</native.image.path>
+                        <native.image.path>
+                            ${project.build.directory}/${project.build.finalName}-runner</native.image.path>
                         <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>
                         <maven.home>${maven.home}</maven.home>
                     </systemPropertyVariables>

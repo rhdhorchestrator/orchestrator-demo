@@ -1,0 +1,48 @@
+openapi: 3.0.3
+info:
+  title: test
+  description: |-
+    test
+  version: 1.0.0
+tags:
+  - name: test
+    description: test
+servers:
+  - url: /
+security:
+  - BearerToken: []
+paths:
+  /:
+    get:
+      summary: Get user's notifications
+      description: Get user's notifications
+      operationId: test
+      parameters:
+        - in: header
+          name: api-key
+          schema:
+            type: string
+          required: false
+      responses:
+        "200":
+          description: Successful operation
+#          content:
+#            application/json:
+#              schema:
+#                $ref: "#/components/schemas/GetNotifications"
+#      security:
+#        - defaultApiKey: []
+#components:
+#  securitySchemes:
+    #BearerToken:
+    # type: oauth2
+    # flows:
+    #   clientCredentials:
+    #     tokenUrl: http://localhost:32802/realms/quarkus/protocol/openid-connect/token
+    #     scopes: {}
+    # description: Bearer Token authentication
+    #defaultApiKey:
+    #  description: API key provided in console
+    #  type: apiKey
+    #  name: api-key
+    #  in: header
