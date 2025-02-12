@@ -31,6 +31,17 @@ Edit the workflow, add schema and spec files and run it locally from project's f
 ```bash
 kn-workflow quarkus run
 ```
+## Workflow images
+For running the workflow locally (with `kn-workflow run`), the following image is pulled:
+```
+registry.redhat.io/openshift-serverless-1/logic-swf-devmode-rhel8:1.35.0
+```
+
+For building the workflow image, the following images are pulled:
+```
+registry.redhat.io/openshift-serverless-1/logic-swf-builder-rhel8@sha256:5590b799420769ee2fe316bc0425bec10f7a29433765244702a23348150e621e
+registry.access.redhat.com/ubi9/openjdk-17:1.21-2
+```
 
 ## References
 
