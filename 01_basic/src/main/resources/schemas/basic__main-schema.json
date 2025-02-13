@@ -4,26 +4,32 @@
     "$schema": "http://json-schema.org/draft-07/schema#",
     "type": "object",
     "properties": {
-      "projectName": {
-        "title": "Project Name",
+      "owner": {
+        "title": "owner",
         "description": "OCP project to create",
-        "type": "string",
-        "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+        "type": "string"
       },
-      "recipients": {
-        "title": "Recipients",
-        "type": "array",
-        "description": "A list of recipients for the notification in the format of 'user:<namespace>/<username>' or 'group:<namespace>/<groupname>', i.e. 'user:default/jsmith'",
-        "items": {
-          "title": "Recipient",
-          "type": "string",
-          "pattern": "^(user|group):[a-z0-9]([-a-z0-9]*[a-z0-9])?/([a-z0-9]([-a-z0-9]*[a-z0-9])?)$"
-        },
-        "minItems": 1
+      "repo": {
+        "title": "repo",
+        "description": "OCP project to create",
+        "type": "string"
+      },
+      "baseBranch": {
+        "title": "baseBranch",
+        "description": "OCP project to create",
+        "type": "string"
+      },
+      "targetBranch": {
+        "title": "targetBranch",
+        "description": "OCP project to create",
+        "type": "string"
       }
     },
     "required": [
-      "projectName",
-      "recipients"
+      "owner",
+      "repo",
+      "baseBranch",
+      "targetBranch"
+
     ]
   }

@@ -13,6 +13,16 @@ extensions:
 functions:
   - name: createNotification
     operation: notifications#createNotification
+  - name: test
+    operation: specs/test.yaml#test
+  - name: getLatestSHA
+    operation: specs/github.yaml#getLatestSHA
+  - name: createBranch
+    operation: specs/github.yaml#createBranch
+  - name: createFile
+    operation: specs/github.yaml#createFile
+  - name: createPullRequest
+    operation: specs/github.yaml#createPullRequest
   - name: print
     type: custom
     operation: sysout
@@ -20,9 +30,14 @@ functions:
     type: expression
     operation: '{
         "result": {
-          "completedWith":"success",
-          "message": "Project " + .projectName + " active",
-          "outputs":[]
+          "message": "PR created",
+          "outputs":[
+              {
+                "key": "PR_URL",
+                "value": .pr_url.html_url,
+                "format":"link"
+              }
+            ]
         }
       }'
 start: "Print inputs"
@@ -30,22 +45,64 @@ states:
   - name: Print inputs
     type: operation
     actions:
-      - name: "Create notification"
+      - name: "Test"
         functionRef:
-          refName: createNotification
-          arguments:
-            recipients:
-              type: "entity"
-              entityRef: .recipients
-            payload:
-              title: '"Project " + .projectName'
-              description: '"Project " + .projectName'
-              topic: "basic"
-              severity: "normal"
-      - functionRef:
-          refName: print
-          arguments:
-            message: '"Project " + .projectName'
+          refName: test
+        actionDataFilter:
+          toStateData: .scafolderReponse
+    transition: CreateBranch
+  - name: CreateBranch
+    type: operation
+    actions:
+      - name: "GetHeadSha"
+        functionRef:
+          refName: getLatestSHA
+          arguments:  
+            owner: .owner
+            repo: .repo
+            branch: .baseBranch
+        actionDataFilter:
+          toStateData: .latestSHA
+      - name: "createBranch"
+        functionRef:
+          refName: createBranch
+          arguments:  
+            owner: .owner
+            repo: .repo
+            ref: '"refs/heads/" + .targetBranch'
+            sha: .latestSHA.object.sha
+    transition: CreateFiles
+  - name: CreateFiles
+    type: foreach
+    inputCollection: "${ [.scafolderReponse.files[]] }"
+    iterationParam: currentFile
+    actions:
+      - name: "createFile"
+        functionRef:
+          refName: createFile
+          arguments:  
+            owner: .owner
+            repo: .repo
+            path: .currentFile.path
+            message: '"Updating file: " + .currentFile.path'
+            content: .currentFile.content | @base64
+            branch: .targetBranch
+    transition: CreatePR
+  - name: CreatePR
+    type: operation
+    actions:
+      - name: "createPullRequest"
+        functionRef:
+          refName: createPullRequest
+          arguments:  
+            owner: .owner
+            repo: .repo
+            title: "Automated PR"
+            body: ""
+            head: .targetBranch
+            base: .baseBranch
+        actionDataFilter:
+          toStateData: .prURL   
       - name: setOutput
         functionRef:
           refName: successResult
