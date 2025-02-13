@@ -1,0 +1,178 @@
+openapi: 3.0.0
+info:
+  title: GitHub REST API
+  description: OpenAPI spec for creating a new file and a pull request using the GitHub API.
+  version: 1.0.0
+servers:
+  - url: https://api.github.com
+security:
+- BearerToken: []
+paths:
+  /repos/{owner}/{repo}/git/ref/heads/{branch}:
+    get:
+      summary: Get latest commit SHA of a branch
+      description: Fetches the latest commit SHA for a given branch.
+      operationId: getLatestSHA
+      parameters:
+        - name: owner
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: repo
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: branch
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful response with the latest commit SHA.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    type: object
+                    properties:
+                      sha:
+                        type: string
+        '404':
+          description: Repository or branch not found.
+  /repos/{owner}/{repo}/git/refs:
+    post:
+      summary: Create a new branch
+      description: Creates a new branch from an existing commit SHA.
+      operationId: createBranch
+      parameters:
+        - name: owner
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: repo
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                ref:
+                  type: string
+                  example: refs/heads/new-feature-branch
+                sha:
+                  type: string
+                  example: "f9e5a3b2c7e3c9d6b1f2e8d4a7c5e1b0d9f6a3e2"
+      responses:
+        '201':
+          description: Branch created successfully.
+        '422':
+          description: Invalid input or branch already exists.
+  /repos/{owner}/{repo}/contents/{path}:
+    put:
+      summary: Create or update a file
+      description: Adds a new file or updates an existing file in a repository.
+      operationId: createFile
+      parameters:
+        - name: owner
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: repo
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: path
+          in: path
+          required: true
+          schema:
+            type: string
+          x-multi-segment: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                message:
+                  type: string
+                  example: "Adding a new file via GitHub API"
+                content:
+                  type: string
+                  format: byte
+                  example: "SGVsbG8sIHRoaXMgaXMgYSBuZXcgZmlsZQ=="
+                branch:
+                  type: string
+                  example: "new-feature-branch"
+      responses:
+        '201':
+          description: File created successfully.
+        '422':
+          description: File already exists or invalid request.
+  /repos/{owner}/{repo}/pulls:
+    post:
+      summary: Create a pull request
+      description: Opens a new pull request from a branch to the base branch.
+      operationId: createPullRequest
+      parameters:
+        - name: owner
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: repo
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                  example: "New Feature: Added new file"
+                body:
+                  type: string
+                  example: "This PR adds a new file using the GitHub REST API."
+                head:
+                  type: string
+                  example: "new-feature-branch"
+                base:
+                  type: string
+                  example: "main"
+      responses:
+        '201':
+          description: Pull request created successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  html_url:
+                    type: string
+                    example: "https://github.com/user/repo/pull/42"
+        '422':
+          description: Invalid input or pull request already exists.
+components:
+  securitySchemes:
+    BearerToken:
+      type: http
+      scheme: bearer
+      description: Bearer Token authentication
