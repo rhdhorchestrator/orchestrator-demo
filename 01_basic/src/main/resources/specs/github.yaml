@@ -1,18 +1,19 @@
 openapi: 3.0.0
 info:
-  title: GitHub REST API
-  description: OpenAPI spec for creating a new file and a pull request using the GitHub API.
+  title: GitHub Repository Automation API
   version: 1.0.0
+  description: API specification for automating GitHub repository tasks using the GitHub REST API v3.
+
 servers:
   - url: https://api.github.com
+    description: GitHub API
 security:
 - BearerToken: []
 paths:
   /repos/{owner}/{repo}/git/ref/heads/{branch}:
     get:
-      summary: Get latest commit SHA of a branch
-      description: Fetches the latest commit SHA for a given branch.
-      operationId: getLatestSHA
+      summary: Get the SHA of a branch
+      operationId: getBranchSHA
       parameters:
         - name: owner
           in: path
@@ -31,7 +32,7 @@ paths:
             type: string
       responses:
         '200':
-          description: Successful response with the latest commit SHA.
+          description: Successfully retrieved branch reference
           content:
             application/json:
               schema:
@@ -43,11 +44,10 @@ paths:
                       sha:
                         type: string
         '404':
-          description: Repository or branch not found.
+          description: Branch not found
   /repos/{owner}/{repo}/git/refs:
     post:
       summary: Create a new branch
-      description: Creates a new branch from an existing commit SHA.
       operationId: createBranch
       parameters:
         - name: owner
@@ -69,20 +69,20 @@ paths:
               properties:
                 ref:
                   type: string
-                  example: refs/heads/new-feature-branch
                 sha:
                   type: string
-                  example: "f9e5a3b2c7e3c9d6b1f2e8d4a7c5e1b0d9f6a3e2"
       responses:
         '201':
-          description: Branch created successfully.
-        '422':
-          description: Invalid input or branch already exists.
-  /repos/{owner}/{repo}/contents/{path}:
-    put:
-      summary: Create or update a file
-      description: Adds a new file or updates an existing file in a repository.
-      operationId: createFile
+          description: Branch created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+
+  /repos/{owner}/{repo}/git/commits/{commit_sha}:
+    get:
+      summary: Get details of a commit
+      operationId: getCommitDetails
       parameters:
         - name: owner
           in: path
@@ -94,12 +94,113 @@ paths:
           required: true
           schema:
             type: string
-        - name: path
+        - name: commit_sha
           in: path
           required: true
           schema:
             type: string
-          x-multi-segment: true
+      responses:
+        '200':
+          description: Commit details retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+
+  /repos/{owner}/{repo}/git/blobs:
+    post:
+      summary: Create a new blob
+      operationId: createBlob
+      parameters:
+        - name: owner
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: repo
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                content:
+                  type: string
+                encoding:
+                  type: string
+      responses:
+        '201':
+          description: Blob created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+
+  /repos/{owner}/{repo}/git/trees:
+    post:
+      summary: Create a new tree
+      operationId: createTree
+      parameters:
+        - name: owner
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: repo
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                base_tree:
+                  type: string
+                tree:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      path:
+                        type: string
+                      mode:
+                        type: string
+                      type:
+                        type: string
+                      sha:
+                        type: string
+      responses:
+        '201':
+          description: Tree created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+
+  /repos/{owner}/{repo}/git/commits:
+    post:
+      summary: Create a new commit
+      operationId: createCommit
+      parameters:
+        - name: owner
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: repo
+          in: path
+          required: true
+          schema:
+            type: string
       requestBody:
         required: true
         content:
@@ -109,19 +210,58 @@ paths:
               properties:
                 message:
                   type: string
-                  example: "Adding a new file via GitHub API"
-                content:
+                tree:
                   type: string
-                  format: byte
-                  example: "SGVsbG8sIHRoaXMgaXMgYSBuZXcgZmlsZQ=="
-                branch:
-                  type: string
-                  example: "new-feature-branch"
+                parents:
+                  type: array
+                  items:
+                    type: string
       responses:
         '201':
-          description: File created successfully.
-        '422':
-          description: File already exists or invalid request.
+          description: Commit created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+
+  /repos/{owner}/{repo}/git/refs/heads/{branch}:
+    patch:
+      summary: Update a branch reference
+      operationId: updateBranchRef
+      parameters:
+        - name: owner
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: repo
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: branch
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                sha:
+                  type: string
+                force:
+                  type: boolean
+      responses:
+        '200':
+          description: Branch updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
   /repos/{owner}/{repo}/pulls:
     post:
       summary: Create a pull request
