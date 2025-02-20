@@ -36,7 +36,7 @@ functions:
     operation: sysout
   - name: createNewBlob
     type: expression
-    operation: '{"path": .currentFile.path, "mode": "100644", "type": "blob", "sha": .blob.sha}'
+    operation: '{"mode": "100644", "path": ($currentFile.path|tostring), "type": "blob", "sha": .blob.sha}'
   - name: successResult
     type: expression
     operation: '{
@@ -102,12 +102,12 @@ states:
         functionRef:
           refName: createBlob
           arguments:  
-            owner: $owner
-            repo: $repo
-            content: $currentFile.content
+            owner: .owner
+            repo: .repo
+            content: ($currentFile.content|tostring)
             encoding: "utf-8"
         actionDataFilter:
-          toStateData: $blob
+          toStateData: .blob
       - name: createNewBlob
         functionRef:
           refName: createNewBlob
