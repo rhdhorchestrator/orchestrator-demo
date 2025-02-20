@@ -17,7 +17,7 @@ functions:
     operation: specs/test.yaml#test
   - name: getBranchSHA
     operation: specs/github.yaml#getBranchSHA
-  - name: updateBranchRef
+  - name: pushCommitBranch
     operation: specs/github.yaml#updateBranchRef
   - name: createCommit
     operation: specs/github.yaml#createCommit
@@ -36,7 +36,7 @@ functions:
     operation: sysout
   - name: createNewBlob
     type: expression
-    operation: '{"mode": "100644", "path": ($currentFile.path|tostring), "type": "blob", "sha": .blob.sha}'
+    operation: '{"mode": "100644", "path": ($currentFile.path|tostring), "type": "blob", "sha": $WORKFLOW.prevActionResult.sha}'
   - name: successResult
     type: expression
     operation: '{
@@ -71,7 +71,7 @@ states:
           arguments:  
             owner: .owner
             repo: .repo
-            branch: .baseBranch
+            ref: '"heads/" + .baseBranch'
         actionDataFilter:
           toStateData: .latestSHA
       - name: "createBranch"
@@ -106,8 +106,6 @@ states:
             repo: .repo
             content: ($currentFile.content|tostring)
             encoding: "utf-8"
-        actionDataFilter:
-          toStateData: .blob
       - name: createNewBlob
         functionRef:
           refName: createNewBlob
@@ -138,11 +136,11 @@ states:
           toStateData: .newCommit 
       - name: "push"
         functionRef:
-          refName: updateBranchRef
+          refName: pushCommitBranch
           arguments:  
             owner: .owner
             repo: .repo
-            branch: .targetBranch
+            ref: '"heads/" + .targetBranch'
             sha: .newCommit.sha 
             force: false
     transition: CreatePR
