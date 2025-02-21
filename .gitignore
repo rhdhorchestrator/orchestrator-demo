@@ -41,3 +41,9 @@ nb-configuration.xml
 
 # Plugin directory
 /.quarkus/cli/plugins/
+
+# JavaScript
+dist-types
+node_modules
+dist-scalprum
+dist
