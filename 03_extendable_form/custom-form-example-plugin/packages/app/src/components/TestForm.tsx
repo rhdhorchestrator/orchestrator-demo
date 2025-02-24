@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Header, Page, Content } from '@backstage/core-components';
-import { OrchestratorForm } from '@janus-idp/backstage-plugin-orchestrator-form-react';
+import { OrchestratorForm } from '@red-hat-developer-hub/backstage-plugin-orchestrator-form-react';
 import { JsonObject } from '@backstage/types';
 import { JSONSchema7 } from 'json-schema';
 

@@ -7,7 +7,7 @@ import {
 
 import { rootRouteRef } from './routes';
 import CustomApi from './customApi';
-import { orchestratorFormApiRef } from '@janus-idp/backstage-plugin-orchestrator-form-api';
+import { orchestratorFormApiRef } from '@red-hat-developer-hub/backstage-plugin-orchestrator-form-api';
 
 export const formApiFactory = createApiFactory({
   api: orchestratorFormApiRef,

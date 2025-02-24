@@ -48,7 +48,7 @@
     "react-router": "^6.3.0",
     "react-router-dom": "^6.3.0",
     "react-use": "^17.2.4",
-    "@janus-idp/backstage-plugin-orchestrator-form-react": "^1.0.103"
+    "@red-hat-developer-hub/backstage-plugin-orchestrator-form-react": "^1.4.6"
   },
   "devDependencies": {
     "@backstage/test-utils": "^1.5.8",

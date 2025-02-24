@@ -2,7 +2,7 @@ import React from 'react';
 import {
   FormDecoratorProps,
   OrchestratorFormApi,
-} from '@janus-idp/backstage-plugin-orchestrator-form-api';
+} from '@red-hat-developer-hub/backstage-plugin-orchestrator-form-api';
 import {
   ErrorSchema,
   FormValidation,
