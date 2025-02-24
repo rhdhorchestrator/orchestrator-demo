@@ -17,6 +17,8 @@ This guide walks you through a workflow that creates and deploys an application 
    The workflow deploys the application on the OCP cluster using Red Hat OpenShift GitOps (ArgoCD).
 
 ---
+## Workflow Demo
+See [demo recording](https://www.youtube.com/watch?v=ApDemFgkjqo).
 
 ## Workflow Diagram
 
