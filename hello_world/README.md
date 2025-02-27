@@ -1,126 +1,143 @@
-# **Quarkus Serverless Workflow - Setup Guide**
+---
 
-This guide documents **every step** required to set up and run a **Quarkus Serverless Workflow** with PostgreSQL. It includes installation, configuration, troubleshooting, and verification steps.
+# **Quarkus Serverless Workflow - End-to-End Setup Guide**
+
+This guide will walk you through setting up a **Quarkus Serverless Workflow** using PostgreSQL. It includes installation steps, project setup, database configuration, and running a workflow.
 
 ---
 
 ## **1. Prerequisites**
-Before starting, ensure you have the following installed:
+Before getting started, install the required dependencies.
 
-- **Java 17+** (`brew install openjdk@17`)
-- **Maven** (`brew install maven`)
-- **Quarkus CLI** (optional: `brew install quarkus`)
-- **PostgreSQL** (using **Homebrew** or **Podman**)
-- **Podman or Docker** (if using a containerized database)
-
----
-
-## **2. Clone the Repository**
-Navigate to your working directory and clone the project:
-
+### **1.1 Install Java 17+**
+#### **macOS (M1/M2) - Using Homebrew**
 ```sh
-git clone <your-repo-url>
-cd hello_world
+brew install openjdk@17
+echo 'export PATH="/opt/homebrew/opt/openjdk@17/bin:$PATH"' >> ~/.zshrc
+source ~/.zshrc
+```
+Verify installation:
+```sh
+java -version
+```
+
+#### **Fedora**
+```sh
+sudo dnf install java-17-openjdk-devel
+```
+Verify installation:
+```sh
+java -version
 ```
 
 ---
 
-## **3. Start PostgreSQL**
-Choose **one** of the following methods:
-
-### **Option 1: Using Homebrew (Local Installation)**
+### **1.2 Install Maven**
+#### **macOS (M1/M2)**
 ```sh
-brew install postgresql@14
+brew install maven
+```
+
+#### **Fedora**
+```sh
+sudo dnf install maven
+```
+Verify installation:
+```sh
+mvn -version
+```
+
+---
+
+### **1.3 Install Quarkus CLI**
+#### **macOS (M1/M2)**
+```sh
+brew install quarkus
+```
+
+#### **Fedora**
+```sh
+curl -Lo install.sh https://code.quarkus.io/install.sh && chmod +x install.sh && ./install.sh
+```
+Verify installation:
+```sh
+quarkus --version
+```
+
+---
+
+### **1.4 Install `kn-workflow` CLI**
+> **⚠️ The standard `kn` CLI installation did not work, so use this method instead.**
+
+#### **For macOS (M1/M2) - Arm64**
+```sh
+export KN_IMAGE=registry.redhat.io/openshift-serverless-1/logic-kn-workflow-cli-artifacts-rhel8:1.33.0
+podman pull $KN_IMAGE
+KN_CONTAINER_ID=$(podman create $KN_IMAGE)
+podman cp $KN_CONTAINER_ID:/usr/share/kn/macos_arm64/kn-workflow-macos-arm64.tar.gz .
+tar xvzf kn-workflow-macos-arm64.tar.gz
+mv kn kn-workflow
+sudo mv kn-workflow /usr/local/bin/kn-workflow
+chmod +x /usr/local/bin/kn-workflow
+```
+
+#### **For Fedora (x86_64)**
+```sh
+export KN_IMAGE=registry.redhat.io/openshift-serverless-1/logic-kn-workflow-cli-artifacts-rhel8:1.33.0
+podman pull $KN_IMAGE
+KN_CONTAINER_ID=$(podman create $KN_IMAGE)
+podman cp $KN_CONTAINER_ID:/usr/share/kn/linux/kn-workflow-linux.tar.gz .
+tar xvzf kn-workflow-linux.tar.gz
+mv kn kn-workflow
+sudo mv kn-workflow /usr/local/bin/kn-workflow
+chmod +x /usr/local/bin/kn-workflow
+```
+
+Verify installation:
+```sh
+kn-workflow version
+```
+
+---
+
+## **2. Create a New Quarkus Project**
+Use the **Knative Workflow CLI** to scaffold a new Quarkus project:
+
+```sh
+kn-workflow quarkus create --name 00_new_project
+```
+
+Change directory:
+```sh
+cd 00_new_project
+```
+
+---
+
+## **3. Set Up PostgreSQL Database**
+### **Option 1: Using Homebrew (macOS)**
+```sh
+brew install postgresql
 brew services start postgresql
 ```
-
-Create the `quarkusdb` database and user:
+Create a database and user:
 ```sh
 psql postgres
-```
-
-Then, run:
-```sql
 CREATE DATABASE quarkusdb;
 CREATE USER quarkus WITH ENCRYPTED PASSWORD 'quarkus';
 GRANT ALL PRIVILEGES ON DATABASE quarkusdb TO quarkus;
-```
-
-Exit PostgreSQL:
-```sh
 \q
 ```
 
-### **Option 2: Using Podman/Docker**
-Run PostgreSQL in a container:
-
+### **Option 2: Using Podman (macOS/Linux)**
 ```sh
-podman run --name postgres \
-    -e POSTGRES_USER=quarkus \
-    -e POSTGRES_PASSWORD=quarkus \
-    -e POSTGRES_DB=quarkusdb \
-    -p 5432:5432 -d docker.io/postgres:14
-```
-
-Verify it's running:
-```sh
-podman ps
+podman run --name quarkusdb -e POSTGRES_USER=quarkus -e POSTGRES_PASSWORD=quarkus -e POSTGRES_DB=quarkusdb -p 5432:5432 -d docker.io/library/postgres:14
 ```
 
 ---
 
-## **4. Verify Database Connection**
-Run:
-
-```sh
-psql -h localhost -U quarkus -d quarkusdb -c "\dt"
-```
-
-If no tables are found, proceed to **Step 5**.
-
----
-
-## **5. Manually Create the Required Table**
-By default, Quarkus **may not create** the necessary `process_instances` table.
-
-### **Check if Table Exists**
-```sh
-psql -h localhost -U quarkus -d quarkusdb -c "\dt"
-```
-
-If `process_instances` is missing, create it manually:
-
-```sh
-psql -h localhost -U quarkus -d quarkusdb
-```
-
-Run the following SQL:
-```sql
-CREATE TABLE IF NOT EXISTS process_instances (
-    id UUID PRIMARY KEY,
-    process_id VARCHAR(255) NOT NULL,
-    state INT NOT NULL,
-    variables JSONB,
-    start_date TIMESTAMP DEFAULT now(),
-    end_date TIMESTAMP
-);
-```
-
-Exit:
-```sh
-\q
-```
-
-Verify again:
-```sh
-psql -h localhost -U quarkus -d quarkusdb -c "\dt"
-```
-
----
-
-## **6. Configure Quarkus**
-Modify `application.properties`:
-
+## **4. Configure Quarkus to Use PostgreSQL**
+Edit `src/main/resources/application.properties`:
 ```properties
 # Standard JDBC datasource
 %dev.quarkus.datasource.db-kind=postgresql
@@ -128,114 +145,102 @@ Modify `application.properties`:
 %dev.quarkus.datasource.username=quarkus
 %dev.quarkus.datasource.password=quarkus
 
-# Reactive PostgreSQL Configuration
+# 🔹 Reactive PostgreSQL configuration (fixes errors)
 %dev.quarkus.datasource.reactive.url=postgresql://localhost:5432/quarkusdb
 %dev.quarkus.datasource.reactive.username=quarkus
 %dev.quarkus.datasource.reactive.password=quarkus
 
-# Hibernate ORM Configuration
+# Allow Hibernate to create tables automatically (for dev only)
 %dev.quarkus.hibernate-orm.database.generation=drop-and-create
 %dev.quarkus.hibernate-orm.sql-load-script=no-file
 ```
 
 ---
 
-## **7. Start Quarkus Application**
-Run the application in **dev mode**:
+## **5. Manually Create the `process_instances` Table**
+> **Important:** If your workflow execution fails due to a missing table, create it manually:
 
 ```sh
-mvn quarkus:dev -Dquarkus.hibernate-orm.log.sql=true
+psql -h localhost -U quarkus -d quarkusdb -c "
+CREATE TABLE IF NOT EXISTS process_instances (
+    id UUID PRIMARY KEY,
+    process_id VARCHAR(255),
+    state INT,
+    data JSONB
+);
+"
 ```
-
-If successful, you should see logs indicating **Quarkus has started**.
 
 ---
 
-## **8. Verify the Application**
-### **8.1 Check Dev UI**
-Open:
-```
-http://localhost:8080/q/dev-ui
-```
+## **6. Define a Simple Serverless Workflow**
+Edit `src/main/resources/workflows/hello.sw.json`:
 
-### **8.2 Check Swagger UI**
-```
-http://localhost:8080/q/swagger-ui
-```
-
-### **8.3 Test Workflow with API Request**
-Send a request using `curl`:
-
-```sh
-curl -X POST "http://localhost:8080/hello" -H "Content-Type: application/json" -d '{}'
-```
-
-### **8.4 Expected Response**
 ```json
 {
-  "message": "Hello World"
+  "id": "hello",
+  "version": "1.0",
+  "specVersion": "0.8.0",
+  "name": "Hello World",
+  "description": "Description",
+  "start": "HelloWorld",
+  "states": [
+    {
+      "name": "HelloWorld",
+      "type": "inject",
+      "data": {
+        "message": "Hello World"
+      },
+      "end": true
+    }
+  ]
 }
 ```
 
 ---
 
-## **9. Automating Table Creation (Optional)**
-To **automatically create the table** if it does not exist, you can use the following SQL script:
-
-```sql
-DO $$ 
-BEGIN
-    IF NOT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'process_instances') THEN
-        CREATE TABLE process_instances (
-            id UUID PRIMARY KEY,
-            process_id VARCHAR(255) NOT NULL,
-            state INT NOT NULL,
-            variables JSONB,
-            start_date TIMESTAMP DEFAULT now(),
-            end_date TIMESTAMP
-        );
-    END IF;
-END $$;
-```
-
-You can integrate this into a **Flyway migration script** or execute it at startup.
-
----
-
-## **10. Troubleshooting**
-### **Issue: `relation "process_instances" does not exist`**
-- Run:
-  ```sh
-  psql -h localhost -U quarkus -d quarkusdb -c "\dt"
-  ```
-- If missing, create manually (**Step 5**).
-
-### **Issue: Unable to Connect to PostgreSQL**
-For **Homebrew PostgreSQL**, restart the service:
-
+## **7. Start the Quarkus Application**
 ```sh
-brew services restart postgresql
+mvn quarkus:dev
 ```
 
-For **Podman/Docker PostgreSQL**, check logs:
+You should see logs confirming the workflow execution:
+```
+Workflow data
+{
+  "message" : "Hello World"
+}
+```
 
+---
+
+## **8. Test the Workflow API**
+### **8.1 Start the Workflow**
+Run:
 ```sh
-podman logs postgres
+curl -X POST http://localhost:8080/hello
 ```
 
-### **Issue: Unrecognized Configuration Keys in Logs**
-Warnings like:
+### **8.2 Check the Workflow Status**
+```sh
+curl -X GET http://localhost:8080/hello
 ```
-Unrecognized configuration key "quarkus.datasource.reactive.username"
-```
-These can be ignored, but double-check your `application.properties`.
 
 ---
 
-## **11. Next Steps**
-- Modify the workflow to add additional logic.
-- Integrate with Kafka, REST endpoints, or event-driven services.
-- Deploy the workflow to OpenShift or Kubernetes.
+## **9. Stopping the Services**
+### **If Using Homebrew PostgreSQL**
+```sh
+brew services stop postgresql
+```
+
+### **If Using Podman PostgreSQL**
+```sh
+podman stop quarkusdb
+podman rm quarkusdb
+```
 
 ---
 
+# **🎉 Success!**
+Your **Quarkus Serverless Workflow** is now up and running!
