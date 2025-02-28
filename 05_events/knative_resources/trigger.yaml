@@ -1,0 +1,16 @@
+apiVersion: eventing.knative.dev/v1
+kind: Trigger
+metadata:
+  name: produceEvent
+  namespace: sonataflow-infra # Trigger and broker must be on the same namespace
+spec:
+  broker: simple-broker # update with broker value
+  filter:
+    attributes:
+      type: produceEvent
+  subscriber:
+    ref:
+      apiVersion: apps/v1
+      kind: Deployment
+      name: cloudevent-listener
+      namespace: sonataflow-infra
