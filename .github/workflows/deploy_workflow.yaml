@@ -22,11 +22,18 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
+      # STEP 1: Debug entire repository structure
+      - name: Debug: List all files in the repo
+        run: |
+          echo "DEBUG: Listing entire repository contents..."
+          ls -R
+
+      # STEP 2: Debug environment variables
       - name: Debug Environment Variables
         run: |
           echo "DEBUG: Checking Environment Variables..."
           echo "GITHUB_WORKSPACE='${GITHUB_WORKSPACE}'"
-          echo "WORKFLOW_FOLDER='${{ secrets.WORKFLOW_FOLDER }}'"
+          echo "WORKFLOW_FOLDER='${{ secrets.WORKFLOW_FOLDER }}' (masked if it's a secret)"
 
       - name: Validate Environment Variables
         run: |
@@ -55,7 +62,7 @@ jobs:
       - name: Extract Workflow ID and Path
         run: |
           echo "DEBUG: Checking and setting WORKFLOW_PATH..."
-          
+
           WORKFLOW_FOLDER="${{ secrets.WORKFLOW_FOLDER }}"
           if [[ -z "$WORKFLOW_FOLDER" ]]; then
             echo "::error:: WORKFLOW_FOLDER is not set in GitHub Secrets! Exiting."
@@ -91,10 +98,23 @@ jobs:
         run: |
           echo "${{ secrets.GITHUB_TOKEN }}" | podman login ghcr.io -u ${{ github.actor }} --password-stdin
 
+      # STEP 3: Debug what's inside WORKFLOW_FOLDER & WF_RESOURCES before building
+      - name: Debug: Show WORKFLOW_FOLDER & WF_RESOURCES
+        run: |
+          echo "WORKFLOW_FOLDER='${{ env.WORKFLOW_FOLDER }}' (masked if secret)"
+          WF_RESOURCES="${GITHUB_WORKSPACE}/${{ env.WORKFLOW_FOLDER }}/src/main/resources"
+          echo "WF_RESOURCES=$WF_RESOURCES"
+
+          echo "Contents of $GITHUB_WORKSPACE/${{ env.WORKFLOW_FOLDER }}:"
+          ls -l $GITHUB_WORKSPACE/${{ env.WORKFLOW_FOLDER }} || true
+
+          echo "Contents of $WF_RESOURCES:"
+          ls -l $WF_RESOURCES || true
+
       - name: Build and Push Image to GHCR
         run: |
           WF_RESOURCES="${GITHUB_WORKSPACE}/${WORKFLOW_FOLDER}/src/main/resources"
-          
+
           if [[ ! -d "$WF_RESOURCES" ]]; then
             echo "::error:: The directory '$WF_RESOURCES' does not exist! Check your WORKFLOW_FOLDER setting."
             echo "Available directories under ${GITHUB_WORKSPACE}/${WORKFLOW_FOLDER}:"
