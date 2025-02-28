@@ -1,4 +1,4 @@
-name: Build and Deploy Workflow
+name: Build, Deploy and Manage Workflow
 
 on:
   push:
@@ -15,21 +15,14 @@ env:
 
 jobs:
   build-workflow:
-    name: Building the Workflow
+    name: Build and Push Workflow Image
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Debug Environment Variables
-        run: |
-          echo "DEBUG: Checking Environment Variables..."
-          echo "WORKFLOW_FOLDER='${{ secrets.WORKFLOW_FOLDER }}'"
-          echo "GITHUB_WORKSPACE='${GITHUB_WORKSPACE}'"
-          echo "WORKFLOW_PATH='${GITHUB_WORKSPACE}/${{ secrets.WORKFLOW_FOLDER }}'"
-
-      - name: Validate Variables for Build Job
+      - name: Validate Environment Variables
         run: |
           echo "Validating required variables..."
           REQUIRED_VARS=("WORKFLOW_IMAGE_REGISTRY" "WORKFLOW_IMAGE_NAMESPACE" "GITHUB_SHA" "TARGET_NS")
@@ -38,7 +31,6 @@ jobs:
             echo "::error:: WORKFLOW_FOLDER is not set in GitHub Secrets. Please configure it."
             exit 1
           fi
-
           echo "WORKFLOW_FOLDER=${{ secrets.WORKFLOW_FOLDER }}" >> $GITHUB_ENV
 
           MISSING_VARS=()
@@ -54,7 +46,7 @@ jobs:
             exit 1
           fi
 
-      - name: Extract Workflow ID and Folder Path
+      - name: Extract Workflow ID and Path
         run: |
           WORKFLOW_FOLDER="${{ secrets.WORKFLOW_FOLDER }}"
           WORKFLOW_PATH="${GITHUB_WORKSPACE}/${WORKFLOW_FOLDER}"
@@ -68,8 +60,6 @@ jobs:
         run: |
           if [[ ! -d "$WORKFLOW_PATH" ]]; then
             echo "::error:: WORKFLOW_FOLDER '${WORKFLOW_FOLDER}' does not exist in the repository!"
-            echo "Check your GitHub Secrets and ensure it is correctly set."
-            echo "Expected path: $WORKFLOW_PATH"
             exit 1
           fi
 
@@ -96,15 +86,13 @@ jobs:
       - name: Make Image Public
         run: |
           IMAGE_REPO=$(echo "${IMAGE_NAME}" | sed 's|ghcr.io/||')
-          echo "Making GHCR image public: ${IMAGE_REPO}"
-
           curl -X PATCH https://api.github.com/orgs/${{ github.repository_owner }}/packages/container/${IMAGE_REPO}/visibility \
             -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
             -H "Accept: application/vnd.github.v3+json" \
             -d '{"visibility":"public"}'
 
   generate-manifests:
-    name: Generating OpenShift Manifests
+    name: Generate OpenShift Manifests
     runs-on: ubuntu-latest
     needs: build-workflow
 
@@ -126,12 +114,6 @@ jobs:
       - name: Generate OpenShift Manifests
         run: |
           mkdir -p ${MANIFESTS_DIR}
-
-          if [[ ! -d "${WORKFLOW_PATH}/src/main/resources" ]]; then
-            echo "::error:: Directory '${WORKFLOW_PATH}/src/main/resources' not found. Cannot generate manifests."
-            exit 1
-          fi
-
           cd ${WORKFLOW_PATH}/src/main/resources
           echo -e "\nquarkus.flyway.migrate-at-start=true" >> application.properties
           kn-workflow gen-manifest
@@ -142,22 +124,18 @@ jobs:
           MAX_SIZE=1048576  # 1MB
 
           if [[ $(wc -c <"$CONFIG_FILE") -gt $MAX_SIZE ]]; then
-            echo "::warning:: ConfigMap is too large! Splitting into multiple smaller ConfigMaps..."
-
             split -b $MAX_SIZE "$CONFIG_FILE" "${CONFIG_FILE}_part_"
-
             for part in $(ls ${CONFIG_FILE}_part_*); do
               PART_NAME="config-part-$(basename $part)"
               yq --inplace ".metadata.name = \"$PART_NAME\"" "manifests/${PART_NAME}.yaml"
               yq --inplace ".data.\"config-part\" = \"$(base64 -w 0 < $part)\"" "manifests/${PART_NAME}.yaml"
             done
-
             PARENT_CONFIG="manifests/workflow-config-parent.yaml"
             yq --inplace ".metadata.name = \"workflow-config-parent\"" "$PARENT_CONFIG"
             yq --inplace ".data.childConfigs = \"$(ls ${CONFIG_FILE}_part_* | tr '\n' ',' | sed 's/,$//')\"" "$PARENT_CONFIG"
           fi
 
-      - name: Commit Updated Manifests to the Same Branch
+      - name: Commit Updated Manifests
         run: |
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
@@ -165,3 +143,27 @@ jobs:
           git add ${MANIFESTS_DIR}/*
           git commit -m "Updating OpenShift manifests for workflow ${WORKFLOW_ID} [GitHub Actions]" || echo "No changes to commit"
           git push origin ${{ github.ref_name }}
+
+  deploy-to-openshift:
+    name: Deploy to OpenShift
+    runs-on: ubuntu-latest
+    needs: generate-manifests
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install OpenShift CLI (oc)
+        run: |
+          curl -LO https://mirror.openshift.com/pub/openshift-v4/clients/oc/latest/linux/oc.tar.gz
+          tar -xvzf oc.tar.gz
+          sudo mv oc /usr/local/bin/
+
+      - name: Log in to OpenShift
+        run: |
+          oc login --server=${{ secrets.OCP_API_SERVER }} --token=${{ secrets.OCP_API_TOKEN }} --insecure-skip-tls-verify=true
+
+      - name: Apply OpenShift Manifests
+        run: |
+          TARGET_NS=${{ secrets.TARGET_NAMESPACE }}
+          oc apply -f ${MANIFESTS_DIR} -n $TARGET_NS
