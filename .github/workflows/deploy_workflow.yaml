@@ -26,15 +26,13 @@ jobs:
         run: |
           echo "DEBUG: Checking Environment Variables..."
           echo "WORKFLOW_FOLDER=${{ secrets.WORKFLOW_FOLDER }}"
-          echo "WORKFLOW_IMAGE_REGISTRY=${WORKFLOW_IMAGE_REGISTRY}"
-          echo "WORKFLOW_IMAGE_NAMESPACE=${WORKFLOW_IMAGE_NAMESPACE}"
-          echo "TARGET_NS=${TARGET_NS}"
-          echo "GITHUB_SHA=${GITHUB_SHA}"
+          echo "GITHUB_WORKSPACE=${GITHUB_WORKSPACE}"
+          echo "WORKFLOW_PATH=${GITHUB_WORKSPACE}/${{ secrets.WORKFLOW_FOLDER }}"
 
       - name: Validate Variables for Build Job
         run: |
-          echo "Validating variables for Build Job..."
-          REQUIRED_VARS=("WORKFLOW_IMAGE_REGISTRY" "WORKFLOW_IMAGE_NAMESPACE" "GITHUB_SHA")
+          echo "Validating required variables..."
+          REQUIRED_VARS=("WORKFLOW_IMAGE_REGISTRY" "WORKFLOW_IMAGE_NAMESPACE" "GITHUB_SHA" "WORKFLOW_FOLDER")
 
           if [[ -z "${{ secrets.WORKFLOW_FOLDER }}" ]]; then
             echo "::error:: WORKFLOW_FOLDER is not set in GitHub Secrets. Please configure it."
@@ -49,7 +47,7 @@ jobs:
           done
 
           if [[ ${#MISSING_VARS[@]} -gt 0 ]]; then
-            echo "::error:: The following required variables for Build Job are missing:"
+            echo "::error:: The following required variables are missing:"
             printf "::error:: - %s\n" "${MISSING_VARS[@]}"
             exit 1
           fi
@@ -68,8 +66,10 @@ jobs:
 
       - name: Validate Workflow Directory
         run: |
-          if [[ ! -d "${WORKFLOW_PATH}" ]]; then
-            echo "::error:: WORKFLOW_FOLDER '${WORKFLOW_FOLDER}' does not exist in the repository! Check your GitHub Secret configuration."
+          if [[ ! -d "$WORKFLOW_PATH" ]]; then
+            echo "::error:: WORKFLOW_FOLDER '${WORKFLOW_FOLDER}' does not exist in the repository!"
+            echo "Check your GitHub Secrets and ensure it is correctly set."
+            echo "Expected path: $WORKFLOW_PATH"
             exit 1
           fi
 
