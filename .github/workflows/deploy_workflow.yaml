@@ -22,18 +22,16 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      # STEP 1: Debug entire repository structure
       - name: Debug: List all files in the repo
         run: |
           echo "DEBUG: Listing entire repository contents..."
           ls -R
 
-      # STEP 2: Debug environment variables
       - name: Debug Environment Variables
         run: |
           echo "DEBUG: Checking Environment Variables..."
           echo "GITHUB_WORKSPACE='${GITHUB_WORKSPACE}'"
-          echo "WORKFLOW_FOLDER='${{ secrets.WORKFLOW_FOLDER }}' (masked if it's a secret)"
+          echo "WORKFLOW_FOLDER='${{ secrets.WORKFLOW_FOLDER }}' (masked if secret)"
 
       - name: Validate Environment Variables
         run: |
@@ -98,10 +96,9 @@ jobs:
         run: |
           echo "${{ secrets.GITHUB_TOKEN }}" | podman login ghcr.io -u ${{ github.actor }} --password-stdin
 
-      # STEP 3: Debug what's inside WORKFLOW_FOLDER & WF_RESOURCES before building
       - name: Debug: Show WORKFLOW_FOLDER & WF_RESOURCES
         run: |
-          echo "WORKFLOW_FOLDER='${{ env.WORKFLOW_FOLDER }}' (masked if secret)"
+          echo "WORKFLOW_FOLDER='${{ env.WORKFLOW_FOLDER }}'"
           WF_RESOURCES="${GITHUB_WORKSPACE}/${{ env.WORKFLOW_FOLDER }}/src/main/resources"
           echo "WF_RESOURCES=$WF_RESOURCES"
 
@@ -114,7 +111,6 @@ jobs:
       - name: Build and Push Image to GHCR
         run: |
           WF_RESOURCES="${GITHUB_WORKSPACE}/${WORKFLOW_FOLDER}/src/main/resources"
-
           if [[ ! -d "$WF_RESOURCES" ]]; then
             echo "::error:: The directory '$WF_RESOURCES' does not exist! Check your WORKFLOW_FOLDER setting."
             echo "Available directories under ${GITHUB_WORKSPACE}/${WORKFLOW_FOLDER}:"
