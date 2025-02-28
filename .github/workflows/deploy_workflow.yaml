@@ -157,12 +157,84 @@ jobs:
           which kn-workflow
           kn-workflow version
 
+  generate-manifests:
+    name: Generate OpenShift Manifests
+    runs-on: ubuntu-latest
+    needs: build-workflow
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Debug Workflow Path
+        run: |
+          echo "🔍 DEBUG: Checking workflow folder"
+          echo "WORKFLOW_FOLDER=${{ secrets.WORKFLOW_FOLDER }}"
+          echo "GITHUB_WORKSPACE=${GITHUB_WORKSPACE}"
+
+          WORKFLOW_PATH="${GITHUB_WORKSPACE}/${{ secrets.WORKFLOW_FOLDER }}"
+          echo "Resolved WORKFLOW_PATH=${WORKFLOW_PATH}"
+
+          if [[ ! -d "$WORKFLOW_PATH" ]]; then
+            echo "::error:: ❌ ERROR: WORKFLOW_PATH does not exist!"
+            ls -l ${GITHUB_WORKSPACE}
+            exit 1
+          fi
+
+          echo "WORKFLOW_PATH=${WORKFLOW_PATH}" >> $GITHUB_ENV
+
+      - name: Install Required CLI Tools
+        run: |
+          sudo apt update
+          sudo apt install -y yq jq
+          curl -LO https://mirror.openshift.com/pub/openshift-v4/clients/oc/latest/linux/oc.tar.gz
+          tar -xvzf oc.tar.gz
+          sudo mv oc /usr/local/bin/
+
+      - name: Install kn-workflow CLI using Podman
+        run: |
+          export KN_IMAGE=registry.redhat.io/openshift-serverless-1/logic-kn-workflow-cli-artifacts-rhel8:1.33.0
+          echo "${{ secrets.REDHAT_REGISTRY_PASSWORD }}" | podman login registry.redhat.io -u ${{ secrets.REDHAT_REGISTRY_USERNAME }} --password-stdin
+          podman pull $KN_IMAGE
+          export KN_CONTAINER_ID=$(podman run -di $KN_IMAGE)
+          podman exec $KN_CONTAINER_ID ls -R /usr/share/kn/
+          podman cp $KN_CONTAINER_ID:/usr/share/kn/linux_amd64/kn-workflow-linux-amd64.tar.gz .
+          podman stop $KN_CONTAINER_ID
+          podman rm $KN_CONTAINER_ID
+          tar xvzf kn-workflow-linux-amd64.tar.gz
+
+          if [[ -f "kn" ]]; then
+            mv kn kn-workflow
+          elif [[ -f "kn-workflow-linux-amd64" ]]; then
+            mv kn-workflow-linux-amd64 kn-workflow
+          else
+            echo "::error:: kn-workflow binary missing!"
+            exit 1
+          fi
+
+          sudo mv kn-workflow /usr/local/bin/kn-workflow
+          chmod +x /usr/local/bin/kn-workflow
+          which kn-workflow
+          kn-workflow version
+
       - name: Generate OpenShift Manifests
         run: |
+          echo "📂 Creating manifests directory: ${MANIFESTS_DIR}"
           mkdir -p ${MANIFESTS_DIR}
+
+          # Verify directory structure before proceeding
+          if [[ ! -d "${WORKFLOW_PATH}/src/main/resources" ]]; then
+            echo "::error:: ❌ ERROR: Directory ${WORKFLOW_PATH}/src/main/resources does not exist!"
+            ls -l ${WORKFLOW_PATH}
+            exit 1
+          fi
+
           cd ${WORKFLOW_PATH}/src/main/resources
+
+          # Append quarkus.flyway.migrate-at-start=true only if it's missing
           grep -qxF "quarkus.flyway.migrate-at-start=true" application.properties || \
           echo "quarkus.flyway.migrate-at-start=true" >> application.properties
+
           kn-workflow gen-manifest
 
       - name: Commit and Push Manifests
@@ -173,3 +245,4 @@ jobs:
           git add ${MANIFESTS_DIR}/*
           git commit -m "Updating OpenShift manifests for workflow ${WORKFLOW_ID} [GitHub Actions]" || echo "No changes to commit"
           git push origin ${{ github.ref_name }}
+
