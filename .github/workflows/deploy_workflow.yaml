@@ -78,11 +78,9 @@ jobs:
             exit 1
           fi
 
-      - name: Set Correct WF_RESOURCES Path and Copy Files
+      - name: Set Correct WF_RESOURCES Path
         run: |
-          echo "DEBUG: Resolving WF_RESOURCES path..."
-
-          WF_RESOURCES="${GITHUB_WORKSPACE}/${WORKFLOW_FOLDER}/src/main/resources"
+          WF_RESOURCES="${WORKFLOW_PATH}/src/main/resources"
 
           if [[ ! -d "$WF_RESOURCES" ]]; then
             echo "::error:: ERROR: The expected resources directory does not exist!"
@@ -92,10 +90,6 @@ jobs:
 
           echo "Using WF_RESOURCES: $WF_RESOURCES"
           echo "WF_RESOURCES=${WF_RESOURCES}" >> $GITHUB_ENV
-
-          mkdir -p build-context
-          cp -r ${WORKFLOW_PATH} build-context/
-          cp -r resources build-context/
 
       - name: Install Podman
         run: |
@@ -112,7 +106,6 @@ jobs:
 
       - name: Build and Push Image to GHCR
         run: |
-          cd build-context
           podman build -f resources/workflow-builder.Dockerfile \
             --build-arg WF_RESOURCES=${WF_RESOURCES} \
             --build-arg FLOW_NAME="${WORKFLOW_ID}" \
