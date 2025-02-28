@@ -25,34 +25,65 @@ jobs:
       - name: Debug Environment Variables
         run: |
           echo "DEBUG: Checking Environment Variables..."
-          echo "GITHUB_WORKSPACE=${GITHUB_WORKSPACE}"
-          echo "WORKFLOW_FOLDER=${{ secrets.WORKFLOW_FOLDER }}"
+          echo "GITHUB_WORKSPACE='${GITHUB_WORKSPACE}'"
+          echo "WORKFLOW_FOLDER='${{ secrets.WORKFLOW_FOLDER }}'"
 
       - name: Validate Environment Variables
         run: |
+          echo "Validating required variables..."
           REQUIRED_VARS=("WORKFLOW_IMAGE_REGISTRY" "WORKFLOW_IMAGE_NAMESPACE" "GITHUB_SHA" "TARGET_NS")
 
+          if [[ -z "${{ secrets.WORKFLOW_FOLDER }}" ]]; then
+            echo "::error:: WORKFLOW_FOLDER is not set in GitHub Secrets. Please configure it."
+            exit 1
+          fi
+          echo "WORKFLOW_FOLDER=${{ secrets.WORKFLOW_FOLDER }}" >> $GITHUB_ENV
+
+          MISSING_VARS=()
           for var in "${REQUIRED_VARS[@]}"; do
             if [[ -z "${!var}" ]]; then
-              echo "::error:: Missing required variable: $var"
-              exit 1
+              MISSING_VARS+=("$var")
             fi
           done
 
+          if [[ ${#MISSING_VARS[@]} -gt 0 ]]; then
+            echo "::error:: The following required variables are missing:"
+            printf "::error:: - %s\n" "${MISSING_VARS[@]}"
+            exit 1
+          fi
+
       - name: Extract Workflow ID and Path
         run: |
+          echo "DEBUG: Checking and setting WORKFLOW_PATH..."
           WORKFLOW_FOLDER="${{ secrets.WORKFLOW_FOLDER }}"
           WORKFLOW_PATH="${GITHUB_WORKSPACE}/${WORKFLOW_FOLDER}"
           WORKFLOW_ID=$(basename "$WORKFLOW_FOLDER")
 
+          echo "Resolved WORKFLOW_PATH=${WORKFLOW_PATH}"
           echo "WORKFLOW_PATH=${WORKFLOW_PATH}" >> $GITHUB_ENV
           echo "WORKFLOW_ID=${WORKFLOW_ID}" >> $GITHUB_ENV
           echo "IMAGE_NAME=${WORKFLOW_IMAGE_REGISTRY}/${WORKFLOW_IMAGE_NAMESPACE}/demo-${WORKFLOW_ID}" >> $GITHUB_ENV
 
           if [[ ! -d "$WORKFLOW_PATH" ]]; then
-            echo "::error:: WORKFLOW_FOLDER '${WORKFLOW_FOLDER}' does not exist!"
+            echo "::error:: WORKFLOW_FOLDER '${WORKFLOW_FOLDER}' does not exist in the repository!"
             exit 1
           fi
+
+      - name: Set Correct WF_RESOURCES Path and Copy Files
+        run: |
+          WF_RESOURCES="${WORKFLOW_FOLDER}/src/main/resources"
+
+          if [[ ! -d "$WORKFLOW_PATH/src/main/resources" ]]; then
+            echo "::error:: ERROR: The expected resources directory does not exist!"
+            exit 1
+          fi
+
+          echo "Using WF_RESOURCES: $WF_RESOURCES"
+          echo "WF_RESOURCES=${WF_RESOURCES}" >> $GITHUB_ENV
+
+          mkdir -p build-context
+          cp -r ${WORKFLOW_PATH} build-context/
+          cp -r resources build-context/
 
       - name: Install Podman
         run: |
@@ -69,9 +100,13 @@ jobs:
 
       - name: Build and Push Image to GHCR
         run: |
-          cd ${GITHUB_WORKSPACE}
-          podman build -f ${WORKFLOW_PATH}/resources/workflow-builder.Dockerfile \
-            --build-arg WF_RESOURCES=${WORKFLOW_PATH}/src/main/resources \
+          cd build-context
+          podman build -f resources/workflow-builder.Dockerfile \
+            --build-arg WF_RESOURCES=${WF_RESOURCES} \
+            --build-arg FLOW_NAME="${WORKFLOW_ID}" \
+            --build-arg FLOW_SUMMARY="Workflow ${WORKFLOW_ID}" \
+            --build-arg FLOW_DESCRIPTION="Automated workflow deployment for ${WORKFLOW_ID}" \
+            --ulimit nofile=4096:4096 \
             --tag ${IMAGE_NAME}:${IMAGE_TAG} \
             --tag ${IMAGE_NAME}:latest .
 
@@ -87,20 +122,6 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Set Workflow Path
-        run: |
-          echo "Setting workflow path..."
-          WORKFLOW_FOLDER="${{ secrets.WORKFLOW_FOLDER }}"
-          WORKFLOW_PATH="${GITHUB_WORKSPACE}/${WORKFLOW_FOLDER}"
-
-          echo "WORKFLOW_PATH=${WORKFLOW_PATH}" >> $GITHUB_ENV
-
-          if [[ ! -d "$WORKFLOW_PATH/src/main/resources" ]]; then
-            echo "::error:: ERROR: The expected resources directory does not exist!"
-            ls -l ${WORKFLOW_PATH}
-            exit 1
-          fi
-
       - name: Install Required CLI Tools
         run: |
           sudo apt update
@@ -112,27 +133,14 @@ jobs:
       - name: Install kn-workflow CLI using Podman
         run: |
           export KN_IMAGE=registry.redhat.io/openshift-serverless-1/logic-kn-workflow-cli-artifacts-rhel8:1.33.0
-          
           echo "${{ secrets.REDHAT_REGISTRY_PASSWORD }}" | podman login registry.redhat.io \
             -u ${{ secrets.REDHAT_REGISTRY_USERNAME }} --password-stdin
-
           podman pull $KN_IMAGE
           export KN_CONTAINER_ID=$(podman run -di $KN_IMAGE)
-
-          KN_BINARY_PATH="/usr/share/kn/linux_amd64/kn-workflow-linux-amd64.tar.gz"
-          
-          if podman exec $KN_CONTAINER_ID test -f $KN_BINARY_PATH; then
-            podman cp $KN_CONTAINER_ID:$KN_BINARY_PATH .
-          else
-            echo "::error:: ❌ ERROR: kn-workflow binary not found!"
-            podman stop $KN_CONTAINER_ID
-            podman rm $KN_CONTAINER_ID
-            exit 1
-          fi
-
+          podman exec $KN_CONTAINER_ID ls -R /usr/share/kn/
+          podman cp $KN_CONTAINER_ID:/usr/share/kn/linux_amd64/kn-workflow-linux-amd64.tar.gz .
           podman stop $KN_CONTAINER_ID
           podman rm $KN_CONTAINER_ID
-          
           tar xvzf kn-workflow-linux-amd64.tar.gz
 
           if [[ -f "kn" ]]; then
@@ -140,7 +148,7 @@ jobs:
           elif [[ -f "kn-workflow-linux-amd64" ]]; then
             mv kn-workflow-linux-amd64 kn-workflow
           else
-            echo "::error:: ❌ ERROR: kn-workflow binary missing!"
+            echo "::error:: kn-workflow binary missing!"
             exit 1
           fi
 
@@ -151,10 +159,12 @@ jobs:
 
       - name: Generate OpenShift Manifests
         run: |
+          echo "📂 Creating manifests directory: ${MANIFESTS_DIR}"
           mkdir -p ${MANIFESTS_DIR}
 
           if [[ ! -d "${WORKFLOW_PATH}/src/main/resources" ]]; then
             echo "::error:: ❌ ERROR: Directory ${WORKFLOW_PATH}/src/main/resources does not exist!"
+            ls -l ${WORKFLOW_PATH}
             exit 1
           fi
 
