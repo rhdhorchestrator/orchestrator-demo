@@ -33,9 +33,7 @@ jobs:
 
           if [[ ${#MISSING_VARS[@]} -gt 0 ]]; then
             echo "::error:: The following required environment variables are missing:"
-            for var in "${MISSING_VARS[@]}"; do
-              echo "::error:: - $var (Set this in GitHub Secrets or Environment Variables)"
-            done
+            printf "::error:: - %s\n" "${MISSING_VARS[@]}"
             exit 1
           fi
 
@@ -43,7 +41,7 @@ jobs:
         run: |
           WORKFLOW_ID=$(basename $GITHUB_WORKSPACE)
           WORKFLOW_FOLDER=$(basename $GITHUB_WORKSPACE)
-          
+
           echo "WORKFLOW_ID=${WORKFLOW_ID}" >> $GITHUB_ENV
           echo "WORKFLOW_FOLDER=${WORKFLOW_FOLDER}" >> $GITHUB_ENV
           echo "IMAGE_NAME=${WORKFLOW_IMAGE_REGISTRY}/${WORKFLOW_IMAGE_NAMESPACE}/demo-${WORKFLOW_ID}" >> $GITHUB_ENV
@@ -102,9 +100,7 @@ jobs:
 
           if [[ ${#MISSING_VARS[@]} -gt 0 ]]; then
             echo "::error:: The following required environment variables are missing:"
-            for var in "${MISSING_VARS[@]}"; do
-              echo "::error:: - $var (Set this in GitHub Secrets or Environment Variables)"
-            done
+            printf "::error:: - %s\n" "${MISSING_VARS[@]}"
             exit 1
           fi
 
