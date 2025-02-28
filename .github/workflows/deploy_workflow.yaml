@@ -129,14 +129,6 @@ jobs:
           podman push ${IMAGE_NAME}:${IMAGE_TAG}
           podman push ${IMAGE_NAME}:latest
 
-      - name: Make Image Public
-        run: |
-          IMAGE_REPO=$(echo "${IMAGE_NAME}" | sed 's|ghcr.io/||')
-          curl -X PATCH https://api.github.com/orgs/${{ github.repository_owner }}/packages/container/${IMAGE_REPO}/visibility \
-            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-            -H "Accept: application/vnd.github.v3+json" \
-            -d '{"visibility":"public"}'
-
   generate-manifests:
     name: Generate OpenShift Manifests
     runs-on: ubuntu-latest
