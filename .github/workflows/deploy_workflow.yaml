@@ -58,7 +58,7 @@ jobs:
           
           WORKFLOW_FOLDER="${{ secrets.WORKFLOW_FOLDER }}"
           if [[ -z "$WORKFLOW_FOLDER" ]]; then
-            echo "::error:: WORKFLOW_FOLDER is not set in GitHub Secrets. Please configure it."
+            echo "::error:: WORKFLOW_FOLDER is not set in GitHub Secrets! Exiting."
             exit 1
           fi
 
@@ -70,9 +70,7 @@ jobs:
           echo "WORKFLOW_ID=${WORKFLOW_ID}" >> $GITHUB_ENV
           echo "IMAGE_NAME=${WORKFLOW_IMAGE_REGISTRY}/${WORKFLOW_IMAGE_NAMESPACE}/demo-${WORKFLOW_ID}" >> $GITHUB_ENV
 
-      - name: Validate Workflow Directory
-        run: |
-          echo "Checking if workflow folder exists: $WORKFLOW_PATH"
+          echo "Checking if workflow folder exists..."
           if [[ ! -d "$WORKFLOW_PATH" ]]; then
             echo "::error:: WORKFLOW_FOLDER '${WORKFLOW_FOLDER}' does not exist in the repository!"
             echo "Expected path: $WORKFLOW_PATH"
