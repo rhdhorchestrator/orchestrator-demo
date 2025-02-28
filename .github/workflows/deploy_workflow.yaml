@@ -25,13 +25,13 @@ jobs:
       - name: Debug: List all files in the repo
         run: |
           echo "DEBUG: Listing entire repository contents..."
-          ls -R
+          ls -R ${GITHUB_WORKSPACE}
 
       - name: Debug Environment Variables
         run: |
           echo "DEBUG: Checking Environment Variables..."
           echo "GITHUB_WORKSPACE='${GITHUB_WORKSPACE}'"
-          echo "WORKFLOW_FOLDER='${{ secrets.WORKFLOW_FOLDER }}' (masked if secret)"
+          echo "WORKFLOW_FOLDER='${{ secrets.WORKFLOW_FOLDER }}'"
 
       - name: Validate Environment Variables
         run: |
@@ -96,30 +96,27 @@ jobs:
         run: |
           echo "${{ secrets.GITHUB_TOKEN }}" | podman login ghcr.io -u ${{ github.actor }} --password-stdin
 
-      - name: Debug: Show WORKFLOW_FOLDER & WF_RESOURCES
+      - name: Detect and Adjust WF_RESOURCES Path
         run: |
-          echo "WORKFLOW_FOLDER='${{ env.WORKFLOW_FOLDER }}'"
-          WF_RESOURCES="${GITHUB_WORKSPACE}/${{ env.WORKFLOW_FOLDER }}/src/main/resources"
-          echo "WF_RESOURCES=$WF_RESOURCES"
-
-          echo "Contents of $GITHUB_WORKSPACE/${{ env.WORKFLOW_FOLDER }}:"
-          ls -l $GITHUB_WORKSPACE/${{ env.WORKFLOW_FOLDER }} || true
-
-          echo "Contents of $WF_RESOURCES:"
-          ls -l $WF_RESOURCES || true
-
-      - name: Build and Push Image to GHCR
-        run: |
+          echo "DEBUG: Detecting resources path..."
           WF_RESOURCES="${GITHUB_WORKSPACE}/${WORKFLOW_FOLDER}/src/main/resources"
+          
+          if [[ ! -d "$WF_RESOURCES" ]]; then
+            echo "::warning:: Path '$WF_RESOURCES' not found! Trying alternative..."
+            WF_RESOURCES="${GITHUB_WORKSPACE}/${WORKFLOW_FOLDER}/resources"
+          fi
+
           if [[ ! -d "$WF_RESOURCES" ]]; then
             echo "::error:: The directory '$WF_RESOURCES' does not exist! Check your WORKFLOW_FOLDER setting."
-            echo "Available directories under ${GITHUB_WORKSPACE}/${WORKFLOW_FOLDER}:"
-            ls -l ${GITHUB_WORKSPACE}/${WORKFLOW_FOLDER} || true
+            ls -R ${GITHUB_WORKSPACE}/${WORKFLOW_FOLDER} || true
             exit 1
           fi
 
-          echo "Using WF_RESOURCES=$WF_RESOURCES"
+          echo "Final WF_RESOURCES path: $WF_RESOURCES"
+          echo "WF_RESOURCES=$WF_RESOURCES" >> $GITHUB_ENV
 
+      - name: Build and Push Image to GHCR
+        run: |
           podman build -f resources/workflow-builder.Dockerfile \
             --build-arg WF_RESOURCES=${WF_RESOURCES} \
             --build-arg FLOW_NAME="${WORKFLOW_ID}" \
