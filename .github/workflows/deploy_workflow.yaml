@@ -24,19 +24,26 @@ jobs:
 
       - name: Validate Required Variables
         run: |
-          REQUIRED_VARS=("WORKFLOW_IMAGE_REGISTRY" "WORKFLOW_IMAGE_NAMESPACE" "TARGET_NS" "GITHUB_SHA")
-          for var in "${REQUIRED_VARS[@]}"; do
+          MISSING_VARS=()
+          for var in WORKFLOW_IMAGE_REGISTRY WORKFLOW_IMAGE_NAMESPACE TARGET_NS GITHUB_SHA; do
             if [[ -z "${!var}" ]]; then
-              echo "::error:: $var is not set. Please configure it in GitHub Secrets or Environment Variables."
-              exit 1
+              MISSING_VARS+=("$var")
             fi
           done
 
+          if [[ ${#MISSING_VARS[@]} -gt 0 ]]; then
+            echo "::error:: The following required environment variables are missing:"
+            for var in "${MISSING_VARS[@]}"; do
+              echo "::error:: - $var (Set this in GitHub Secrets or Environment Variables)"
+            done
+            exit 1
+          fi
+
       - name: Extract Workflow ID and Folder Name
         run: |
-          export WORKFLOW_ID=$(basename $GITHUB_WORKSPACE)
-          export WORKFLOW_FOLDER=$(basename $GITHUB_WORKSPACE)
-
+          WORKFLOW_ID=$(basename $GITHUB_WORKSPACE)
+          WORKFLOW_FOLDER=$(basename $GITHUB_WORKSPACE)
+          
           echo "WORKFLOW_ID=${WORKFLOW_ID}" >> $GITHUB_ENV
           echo "WORKFLOW_FOLDER=${WORKFLOW_FOLDER}" >> $GITHUB_ENV
           echo "IMAGE_NAME=${WORKFLOW_IMAGE_REGISTRY}/${WORKFLOW_IMAGE_NAMESPACE}/demo-${WORKFLOW_ID}" >> $GITHUB_ENV
@@ -86,13 +93,20 @@ jobs:
 
       - name: Validate Required Variables
         run: |
-          REQUIRED_VARS=("WORKFLOW_ID" "WORKFLOW_FOLDER" "WORKFLOW_IMAGE_REGISTRY" "WORKFLOW_IMAGE_NAMESPACE" "TARGET_NS")
-          for var in "${REQUIRED_VARS[@]}"; do
+          MISSING_VARS=()
+          for var in WORKFLOW_ID WORKFLOW_FOLDER WORKFLOW_IMAGE_REGISTRY WORKFLOW_IMAGE_NAMESPACE TARGET_NS; do
             if [[ -z "${!var}" ]]; then
-              echo "::error:: $var is not set. Please configure it in GitHub Secrets or Environment Variables."
-              exit 1
+              MISSING_VARS+=("$var")
             fi
           done
+
+          if [[ ${#MISSING_VARS[@]} -gt 0 ]]; then
+            echo "::error:: The following required environment variables are missing:"
+            for var in "${MISSING_VARS[@]}"; do
+              echo "::error:: - $var (Set this in GitHub Secrets or Environment Variables)"
+            done
+            exit 1
+          fi
 
       - name: Install Required CLI Tools
         run: |
