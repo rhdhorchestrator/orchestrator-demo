@@ -22,17 +22,20 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Validate Required Variables
+      - name: Validate Variables for Build Job
         run: |
+          echo "Validating variables for Build Job..."
+          REQUIRED_VARS=("WORKFLOW_IMAGE_REGISTRY" "WORKFLOW_IMAGE_NAMESPACE" "GITHUB_SHA")
           MISSING_VARS=()
-          for var in WORKFLOW_IMAGE_REGISTRY WORKFLOW_IMAGE_NAMESPACE TARGET_NS GITHUB_SHA; do
+
+          for var in "${REQUIRED_VARS[@]}"; do
             if [[ -z "${!var}" ]]; then
               MISSING_VARS+=("$var")
             fi
           done
 
           if [[ ${#MISSING_VARS[@]} -gt 0 ]]; then
-            echo "::error:: The following required environment variables are missing:"
+            echo "::error:: The following required variables for Build Job are missing:"
             printf "::error:: - %s\n" "${MISSING_VARS[@]}"
             exit 1
           fi
@@ -80,6 +83,16 @@ jobs:
           podman push ${IMAGE_NAME}:${IMAGE_TAG}
           podman push ${IMAGE_NAME}:latest
 
+      - name: Make Image Public
+        run: |
+          IMAGE_REPO=$(echo "${IMAGE_NAME}" | sed 's|ghcr.io/||')
+          echo "Making GHCR image public: ${IMAGE_REPO}"
+
+          curl -X PATCH https://api.github.com/orgs/${{ github.repository_owner }}/packages/container/${IMAGE_REPO}/visibility \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            -d '{"visibility":"public"}'
+
   generate-manifests:
     name: Generating OpenShift Manifests
     runs-on: ubuntu-latest
@@ -89,17 +102,20 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Validate Required Variables
+      - name: Validate Variables for Manifest Generation
         run: |
+          echo "Validating variables for Manifest Generation..."
+          REQUIRED_VARS=("WORKFLOW_ID" "WORKFLOW_FOLDER" "WORKFLOW_IMAGE_REGISTRY" "WORKFLOW_IMAGE_NAMESPACE" "TARGET_NS")
           MISSING_VARS=()
-          for var in WORKFLOW_ID WORKFLOW_FOLDER WORKFLOW_IMAGE_REGISTRY WORKFLOW_IMAGE_NAMESPACE TARGET_NS; do
+
+          for var in "${REQUIRED_VARS[@]}"; do
             if [[ -z "${!var}" ]]; then
               MISSING_VARS+=("$var")
             fi
           done
 
           if [[ ${#MISSING_VARS[@]} -gt 0 ]]; then
-            echo "::error:: The following required environment variables are missing:"
+            echo "::error:: The following required variables for Manifest Generation are missing:"
             printf "::error:: - %s\n" "${MISSING_VARS[@]}"
             exit 1
           fi
