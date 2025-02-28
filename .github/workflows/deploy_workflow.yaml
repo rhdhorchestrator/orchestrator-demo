@@ -22,27 +22,48 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Extract Workflow ID and Folder Name
-        run: |
-          echo "WORKFLOW_ID=$(basename $GITHUB_WORKSPACE)" >> $GITHUB_ENV
-          echo "WORKFLOW_FOLDER=$(basename $GITHUB_WORKSPACE)" >> $GITHUB_ENV
-          echo "IMAGE_NAME=${{ env.WORKFLOW_IMAGE_REGISTRY }}/${{ env.WORKFLOW_IMAGE_NAMESPACE }}/demo-$(basename $GITHUB_WORKSPACE)" >> $GITHUB_ENV
-
       - name: Validate Required Variables
         run: |
-          if [[ -z "${WORKFLOW_ID}" || -z "${WORKFLOW_FOLDER}" || -z "${WORKFLOW_IMAGE_REGISTRY}" || -z "${WORKFLOW_IMAGE_NAMESPACE}" ]]; then
-            echo "::error:: Missing required environment variables."
+          MISSING_VARS=0
+
+          for var in WORKFLOW_IMAGE_REGISTRY WORKFLOW_IMAGE_NAMESPACE TARGET_NS; do
+            if [[ -z "${!var}" ]]; then
+              echo "::error:: $var is not set. Please configure it in GitHub Secrets or Environment Variables."
+              MISSING_VARS=1
+            fi
+          done
+
+          if [[ $MISSING_VARS -eq 1 ]]; then
             exit 1
+          fi
+
+      - name: Extract Workflow ID and Folder Name
+        run: |
+          WORKFLOW_ID=$(basename $GITHUB_WORKSPACE)
+          WORKFLOW_FOLDER=$(basename $GITHUB_WORKSPACE)
+          
+          echo "WORKFLOW_ID=${WORKFLOW_ID}" >> $GITHUB_ENV
+          echo "WORKFLOW_FOLDER=${WORKFLOW_FOLDER}" >> $GITHUB_ENV
+          echo "IMAGE_NAME=${WORKFLOW_IMAGE_REGISTRY}/${WORKFLOW_IMAGE_NAMESPACE}/demo-${WORKFLOW_ID}" >> $GITHUB_ENV
+
+      - name: Validate Repository Structure
+        run: |
+          if [[ ! -d "${WORKFLOW_FOLDER}" ]]; then
+            echo "::error:: WORKFLOW_FOLDER '${WORKFLOW_FOLDER}' does not exist! Check your repository structure."
+            exit 1
+          fi
+
+          if [[ ! -d "${WORKFLOW_FOLDER}/src/main/resources" ]]; then
+            echo "::warning:: Directory '${WORKFLOW_FOLDER}/src/main/resources' not found. Skipping move."
+          else
+            mv ${WORKFLOW_FOLDER}/src/main/resources ${WORKFLOW_FOLDER}/.
+            echo "Moved 'src/main/resources' successfully."
           fi
 
       - name: Install Podman
         run: |
           sudo apt update
           sudo apt install -y podman
-
-      - name: Move Resources for Build
-        run: |
-          mv ${WORKFLOW_FOLDER}/src/main/resources ${WORKFLOW_FOLDER}/.
 
       - name: Log in to GitHub Container Registry (GHCR)
         run: |
@@ -82,6 +103,12 @@ jobs:
       - name: Generate OpenShift Manifests
         run: |
           mkdir -p ${MANIFESTS_DIR}
+
+          if [[ ! -d "${WORKFLOW_FOLDER}/src/main/resources" ]]; then
+            echo "::error:: Directory '${WORKFLOW_FOLDER}/src/main/resources' not found. Cannot generate manifests."
+            exit 1
+          fi
+
           cd ${WORKFLOW_FOLDER}/src/main/resources
           echo -e "\nquarkus.flyway.migrate-at-start=true" >> application.properties
           kn-workflow gen-manifest
@@ -107,11 +134,6 @@ jobs:
           yq --inplace eval '.metadata.annotations["sonataflow.org/profile"] = "gitops"' "$workflow_file"
           yq --inplace ".spec.podTemplate.container.image=\"${WORKFLOW_IMAGE_REGISTRY}/${WORKFLOW_IMAGE_NAMESPACE}/demo-${WORKFLOW_ID}:${IMAGE_TAG}\"" "$workflow_file"
 
-          if test -f "secret.properties"; then
-            yq --inplace ".spec.podTemplate.container.envFrom=[{\"secretRef\": { \"name\": \"${WORKFLOW_ID}-creds\"}}]" "$workflow_file"
-            kubectl create secret generic "${WORKFLOW_ID}-creds" --from-env-file=secret.properties --dry-run=client -oyaml > "00-secret_${WORKFLOW_ID}.yaml"
-          fi
-
       - name: Commit Updated Manifests to the Same Branch
         run: |
           git config --global user.name "GitHub Actions"
@@ -120,28 +142,3 @@ jobs:
           git add ${MANIFESTS_DIR}/*
           git commit -m "Updating OpenShift manifests for workflow ${WORKFLOW_ID} [GitHub Actions]" || echo "No changes to commit"
           git push origin ${{ github.ref_name }}
-
-  deploy-workflow:
-    name: Deploying the Workflow
-    runs-on: ubuntu-latest
-    needs: generate-manifests
-
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: Install OpenShift CLI
-        run: |
-          curl -LO https://mirror.openshift.com/pub/openshift-v4/clients/oc/latest/linux/oc.tar.gz
-          tar -xvzf oc.tar.gz
-          sudo mv oc /usr/local/bin/
-
-      - name: Log in to OpenShift
-        run: |
-          oc login ${{ secrets.OCP_API_URL }} --token=${{ secrets.OCP_TOKEN }} --insecure-skip-tls-verify=true
-
-      - name: Apply OpenShift Manifests
-        run: |
-          oc -n ${TARGET_NS} apply -f ${MANIFESTS_DIR}/00-secret_*.yaml
-          oc -n ${TARGET_NS} apply -f ${MANIFESTS_DIR}/02-configmap_*-props.yaml
-          oc -n ${TARGET_NS} apply -f ${MANIFESTS_DIR}/01-sonataflow_*.yaml
