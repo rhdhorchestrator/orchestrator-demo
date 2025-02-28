@@ -55,13 +55,7 @@ jobs:
       - name: Extract Workflow ID and Path
         run: |
           echo "DEBUG: Checking and setting WORKFLOW_PATH..."
-          
           WORKFLOW_FOLDER="${{ secrets.WORKFLOW_FOLDER }}"
-          if [[ -z "$WORKFLOW_FOLDER" ]]; then
-            echo "::error:: WORKFLOW_FOLDER is not set in GitHub Secrets! Exiting."
-            exit 1
-          fi
-
           WORKFLOW_PATH="${GITHUB_WORKSPACE}/${WORKFLOW_FOLDER}"
           WORKFLOW_ID=$(basename "$WORKFLOW_FOLDER")
 
@@ -70,11 +64,8 @@ jobs:
           echo "WORKFLOW_ID=${WORKFLOW_ID}" >> $GITHUB_ENV
           echo "IMAGE_NAME=${WORKFLOW_IMAGE_REGISTRY}/${WORKFLOW_IMAGE_NAMESPACE}/demo-${WORKFLOW_ID}" >> $GITHUB_ENV
 
-          echo "Checking if workflow folder exists..."
           if [[ ! -d "$WORKFLOW_PATH" ]]; then
             echo "::error:: WORKFLOW_FOLDER '${WORKFLOW_FOLDER}' does not exist in the repository!"
-            echo "Expected path: $WORKFLOW_PATH"
-            ls -l ${GITHUB_WORKSPACE}
             exit 1
           fi
 
@@ -84,14 +75,12 @@ jobs:
 
           if [[ ! -d "$WORKFLOW_PATH/src/main/resources" ]]; then
             echo "::error:: ERROR: The expected resources directory does not exist!"
-            echo "Checked path: $WORKFLOW_PATH/src/main/resources"
             exit 1
           fi
 
           echo "Using WF_RESOURCES: $WF_RESOURCES"
           echo "WF_RESOURCES=${WF_RESOURCES}" >> $GITHUB_ENV
 
-          # Copy required files to build context
           mkdir -p build-context
           cp -r ${WORKFLOW_PATH} build-context/
           cp -r resources build-context/
@@ -124,14 +113,6 @@ jobs:
           podman push ${IMAGE_NAME}:${IMAGE_TAG}
           podman push ${IMAGE_NAME}:latest
 
-      - name: Make Image Public
-        run: |
-          IMAGE_REPO=$(echo "${IMAGE_NAME}" | sed 's|ghcr.io/||')
-          curl -X PATCH https://api.github.com/orgs/${{ github.repository_owner }}/packages/container/${IMAGE_REPO}/visibility \
-            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-            -H "Accept: application/vnd.github.v3+json" \
-            -d '{"visibility":"public"}'
-
   generate-manifests:
     name: Generate OpenShift Manifests
     runs-on: ubuntu-latest
@@ -152,75 +133,43 @@ jobs:
       - name: Install kn-workflow CLI using Podman
         run: |
           export KN_IMAGE=registry.redhat.io/openshift-serverless-1/logic-kn-workflow-cli-artifacts-rhel8:1.33.0
-          
-          # Authenticate to Red Hat Container Registry
           echo "${{ secrets.REDHAT_REGISTRY_PASSWORD }}" | podman login registry.redhat.io \
             -u ${{ secrets.REDHAT_REGISTRY_USERNAME }} --password-stdin
-          
-          # Pull the container image
           podman pull $KN_IMAGE
-          
-          # Start a temporary container
           export KN_CONTAINER_ID=$(podman run -di $KN_IMAGE)
-
-          # Verify the file structure (Debugging Step)
           podman exec $KN_CONTAINER_ID ls -R /usr/share/kn/
-
-          # Copy the correct Knative Workflow CLI binary for Linux
           podman cp $KN_CONTAINER_ID:/usr/share/kn/linux_amd64/kn-workflow-linux-amd64.tar.gz .
-
-          # Stop and remove the container after copying the binary
           podman stop $KN_CONTAINER_ID
           podman rm $KN_CONTAINER_ID
-          
-          # Extract the binary
           tar xvzf kn-workflow-linux-amd64.tar.gz
 
-          # Check if the extracted file is actually `kn`
           if [[ -f "kn" ]]; then
-            echo "Renaming extracted file from kn to kn-workflow"
             mv kn kn-workflow
           elif [[ -f "kn-workflow-linux-amd64" ]]; then
-            echo "Renaming extracted file from kn-workflow-linux-amd64 to kn-workflow"
             mv kn-workflow-linux-amd64 kn-workflow
           else
-            echo "::error:: Could not find the extracted kn binary!"
+            echo "::error:: kn-workflow binary missing!"
             exit 1
           fi
-          
-          # Move it to /usr/local/bin and make it executable
+
           sudo mv kn-workflow /usr/local/bin/kn-workflow
           chmod +x /usr/local/bin/kn-workflow
-          
-          # Verify the installation
           which kn-workflow
           kn-workflow version
-
-      - name: Set Workflow Path
-        run: |
-          echo "Setting workflow path..."
-          WORKFLOW_FOLDER="${{ secrets.WORKFLOW_FOLDER }}"
-          if [[ -z "$WORKFLOW_FOLDER" ]]; then
-            echo "::error:: WORKFLOW_FOLDER is not set!"
-            exit 1
-          fi
-
-          WORKFLOW_PATH="${GITHUB_WORKSPACE}/${WORKFLOW_FOLDER}"
-          echo "WORKFLOW_PATH=${WORKFLOW_PATH}" >> $GITHUB_ENV
-
-          if [[ ! -d "$WORKFLOW_PATH/src/main/resources" ]]; then
-            echo "::error:: ERROR: The expected resources directory does not exist!"
-            echo "Checked path: $WORKFLOW_PATH/src/main/resources"
-            exit 1
-          fi
 
       - name: Generate OpenShift Manifests
         run: |
           mkdir -p ${MANIFESTS_DIR}
           cd ${WORKFLOW_PATH}/src/main/resources
-
-          # Append quarkus.flyway.migrate-at-start=true only if it's missing
           grep -qxF "quarkus.flyway.migrate-at-start=true" application.properties || \
           echo "quarkus.flyway.migrate-at-start=true" >> application.properties
-
           kn-workflow gen-manifest
+
+      - name: Commit and Push Manifests
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git checkout ${{ github.ref_name }}
+          git add ${MANIFESTS_DIR}/*
+          git commit -m "Updating OpenShift manifests for workflow ${WORKFLOW_ID} [GitHub Actions]" || echo "No changes to commit"
+          git push origin ${{ github.ref_name }}
