@@ -78,9 +78,11 @@ jobs:
             exit 1
           fi
 
-      - name: Set Correct WF_RESOURCES Path
+      - name: Set Correct WF_RESOURCES Path and Copy Files
         run: |
-          WF_RESOURCES="${WORKFLOW_PATH}/src/main/resources"
+          echo "DEBUG: Resolving WF_RESOURCES path..."
+
+          WF_RESOURCES="${GITHUB_WORKSPACE}/${WORKFLOW_FOLDER}/src/main/resources"
 
           if [[ ! -d "$WF_RESOURCES" ]]; then
             echo "::error:: ERROR: The expected resources directory does not exist!"
@@ -90,6 +92,10 @@ jobs:
 
           echo "Using WF_RESOURCES: $WF_RESOURCES"
           echo "WF_RESOURCES=${WF_RESOURCES}" >> $GITHUB_ENV
+
+          mkdir -p build-context
+          cp -r ${WORKFLOW_PATH} build-context/
+          cp -r resources build-context/
 
       - name: Install Podman
         run: |
@@ -106,6 +112,7 @@ jobs:
 
       - name: Build and Push Image to GHCR
         run: |
+          cd build-context
           podman build -f resources/workflow-builder.Dockerfile \
             --build-arg WF_RESOURCES=${WF_RESOURCES} \
             --build-arg FLOW_NAME="${WORKFLOW_ID}" \
@@ -146,38 +153,11 @@ jobs:
           chmod +x kn-workflow-linux-amd64
           sudo mv kn-workflow-linux-amd64 /usr/local/bin/kn-workflow
 
-      - name: Generate OpenShift Manifests and Handle Large ConfigMaps
+      - name: Generate OpenShift Manifests
         run: |
           mkdir -p ${MANIFESTS_DIR}
           cd ${WORKFLOW_PATH}/src/main/resources
-
-          MAX_SIZE=1000000  # 1MB limit
-          CONFIGMAP_BASE="workflow-config"
-          CHUNK=0
-          TOTAL_SIZE=0
-          TMP_FILE=$(mktemp)
-
-          echo "Checking ConfigMap size..."
-          for file in $(find . -type f); do
-            FILE_SIZE=$(stat --format=%s "$file")
-            if [[ $(($TOTAL_SIZE + $FILE_SIZE)) -gt $MAX_SIZE ]]; then
-              echo "Creating ConfigMap chunk ${CHUNK}"
-              oc create configmap ${CONFIGMAP_BASE}-${CHUNK} --from-file=$TMP_FILE --dry-run=client -o yaml > ${MANIFESTS_DIR}/${CONFIGMAP_BASE}-${CHUNK}.yaml
-              CHUNK=$((CHUNK+1))
-              TOTAL_SIZE=0
-              TMP_FILE=$(mktemp)
-            fi
-            echo "Adding $file (${FILE_SIZE} bytes) to ConfigMap chunk ${CHUNK}"
-            cp "$file" $TMP_FILE
-            TOTAL_SIZE=$(($TOTAL_SIZE + $FILE_SIZE))
-          done
-
-          if [[ $TOTAL_SIZE -gt 0 ]]; then
-            echo "Creating final ConfigMap chunk ${CHUNK}"
-            oc create configmap ${CONFIGMAP_BASE}-${CHUNK} --from-file=$TMP_FILE --dry-run=client -o yaml > ${MANIFESTS_DIR}/${CONFIGMAP_BASE}-${CHUNK}.yaml
-          fi
-
-          echo "Generating OpenShift manifests..."
+          echo -e "\nquarkus.flyway.migrate-at-start=true" >> application.properties
           kn-workflow gen-manifest
 
       - name: Commit Updated Manifests
@@ -197,6 +177,16 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+
+      - name: Install OpenShift CLI (oc)
+        run: |
+          curl -LO https://mirror.openshift.com/pub/openshift-v4/clients/oc/latest/linux/oc.tar.gz
+          tar -xvzf oc.tar.gz
+          sudo mv oc /usr/local/bin/
+
+      - name: Log in to OpenShift
+        run: |
+          oc login --server=${{ secrets.OCP_API_SERVER }} --token=${{ secrets.OCP_API_TOKEN }} --insecure-skip-tls-verify=true
 
       - name: Apply OpenShift Manifests
         run: |
