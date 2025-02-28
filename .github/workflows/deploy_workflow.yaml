@@ -25,19 +25,21 @@ jobs:
       - name: Debug Environment Variables
         run: |
           echo "DEBUG: Checking Environment Variables..."
-          echo "WORKFLOW_FOLDER=${{ secrets.WORKFLOW_FOLDER }}"
-          echo "GITHUB_WORKSPACE=${GITHUB_WORKSPACE}"
-          echo "WORKFLOW_PATH=${GITHUB_WORKSPACE}/${{ secrets.WORKFLOW_FOLDER }}"
+          echo "WORKFLOW_FOLDER='${{ secrets.WORKFLOW_FOLDER }}'"
+          echo "GITHUB_WORKSPACE='${GITHUB_WORKSPACE}'"
+          echo "WORKFLOW_PATH='${GITHUB_WORKSPACE}/${{ secrets.WORKFLOW_FOLDER }}'"
 
       - name: Validate Variables for Build Job
         run: |
           echo "Validating required variables..."
-          REQUIRED_VARS=("WORKFLOW_IMAGE_REGISTRY" "WORKFLOW_IMAGE_NAMESPACE" "GITHUB_SHA" "WORKFLOW_FOLDER")
+          REQUIRED_VARS=("WORKFLOW_IMAGE_REGISTRY" "WORKFLOW_IMAGE_NAMESPACE" "GITHUB_SHA" "TARGET_NS")
 
           if [[ -z "${{ secrets.WORKFLOW_FOLDER }}" ]]; then
             echo "::error:: WORKFLOW_FOLDER is not set in GitHub Secrets. Please configure it."
             exit 1
           fi
+
+          echo "WORKFLOW_FOLDER=${{ secrets.WORKFLOW_FOLDER }}" >> $GITHUB_ENV
 
           MISSING_VARS=()
           for var in "${REQUIRED_VARS[@]}"; do
@@ -51,8 +53,6 @@ jobs:
             printf "::error:: - %s\n" "${MISSING_VARS[@]}"
             exit 1
           fi
-
-          echo "WORKFLOW_FOLDER=${{ secrets.WORKFLOW_FOLDER }}" >> $GITHUB_ENV
 
       - name: Extract Workflow ID and Folder Path
         run: |
