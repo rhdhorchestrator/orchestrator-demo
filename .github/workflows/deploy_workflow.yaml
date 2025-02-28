@@ -78,6 +78,10 @@ jobs:
           sudo apt update
           sudo apt install -y podman
 
+      - name: Log in to Red Hat Container Registry
+        run: |
+          echo "${{ secrets.REDHAT_REGISTRY_PASSWORD }}" | podman login registry.redhat.io -u ${{ secrets.REDHAT_REGISTRY_USERNAME }} --password-stdin
+
       - name: Log in to GitHub Container Registry (GHCR)
         run: |
           echo "${{ secrets.GITHUB_TOKEN }}" | podman login ghcr.io -u ${{ github.actor }} --password-stdin
@@ -86,6 +90,9 @@ jobs:
         run: |
           podman build -f resources/workflow-builder.Dockerfile \
             --build-arg WF_RESOURCES=${WORKFLOW_PATH} \
+            --build-arg FLOW_NAME="${WORKFLOW_ID}" \
+            --build-arg FLOW_SUMMARY="Workflow ${WORKFLOW_ID}" \
+            --build-arg FLOW_DESCRIPTION="Automated workflow deployment for ${WORKFLOW_ID}" \
             --ulimit nofile=4096:4096 \
             --tag ${IMAGE_NAME}:${IMAGE_TAG} \
             --tag ${IMAGE_NAME}:latest .
@@ -127,23 +134,6 @@ jobs:
           cd ${WORKFLOW_PATH}/src/main/resources
           echo -e "\nquarkus.flyway.migrate-at-start=true" >> application.properties
           kn-workflow gen-manifest
-
-      - name: Handle Large ConfigMaps
-        run: |
-          CONFIG_FILE="${WORKFLOW_PATH}/src/main/resources/application.properties"
-          MAX_SIZE=1048576  # 1MB
-
-          if [[ $(wc -c <"$CONFIG_FILE") -gt $MAX_SIZE ]]; then
-            split -b $MAX_SIZE "$CONFIG_FILE" "${CONFIG_FILE}_part_"
-            for part in $(ls ${CONFIG_FILE}_part_*); do
-              PART_NAME="config-part-$(basename $part)"
-              yq --inplace ".metadata.name = \"$PART_NAME\"" "manifests/${PART_NAME}.yaml"
-              yq --inplace ".data.\"config-part\" = \"$(base64 -w 0 < $part)\"" "manifests/${PART_NAME}.yaml"
-            done
-            PARENT_CONFIG="manifests/workflow-config-parent.yaml"
-            yq --inplace ".metadata.name = \"workflow-config-parent\"" "$PARENT_CONFIG"
-            yq --inplace ".data.childConfigs = \"$(ls ${CONFIG_FILE}_part_* | tr '\n' ',' | sed 's/,$//')\"" "$PARENT_CONFIG"
-          fi
 
       - name: Commit Updated Manifests
         run: |
