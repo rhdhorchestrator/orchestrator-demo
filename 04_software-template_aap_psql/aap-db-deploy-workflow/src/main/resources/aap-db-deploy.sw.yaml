@@ -54,7 +54,6 @@ functions:
     type: expression
     operation: '{
       "result": {
-      "completedWith":"error",
       "message": "Launching software template " + $SECRET.software_template_ref + " failed.",
       "outputs":[]
       }
@@ -63,7 +62,6 @@ functions:
     type: expression
     operation: '{
       "result": {
-      "completedWith":"success",
       "message": "Application " + .java.artifactId + " deployed.",
       "outputs":[
       {
@@ -82,7 +80,6 @@ functions:
     type: expression
     operation: '{
       "result": {
-      "completedWith":"error",
       "message": "Creation of application " + .java.artifactId + " failed.",
       "outputs":[
       {

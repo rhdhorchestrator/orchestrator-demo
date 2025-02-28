@@ -32,7 +32,6 @@ functions:
     type: expression
     operation: '{
         "result": {
-          "completedWith":"success",
           "message": "Project " + .projectName + " active",
           "outputs":[]
         }
@@ -41,7 +40,6 @@ functions:
     type: expression
     operation: '{
         "result": {
-          "completedWith":"error",
           "message": "Project " + .projectName + " not active"
         }
       }'
@@ -49,7 +47,6 @@ functions:
     type: expression
     operation: '{
         "result": {
-          "completedWith":"error",
           "message": "Creation of project " + .projectName + " denied",
           "outputs":[
             {

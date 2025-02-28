@@ -15,7 +15,6 @@ functions:
     type: expression
     operation: '{
       "result": {
-      "completedWith":"success",
       "message": "Extendable workflow completed successfully",
       "outputs":[
       {
