@@ -149,35 +149,43 @@ jobs:
           tar -xvzf oc.tar.gz
           sudo mv oc /usr/local/bin/
 
-      - name: Install kn-workflow CLI using Podman
+            - name: Install kn-workflow CLI using Podman
         run: |
           export KN_IMAGE=registry.redhat.io/openshift-serverless-1/logic-kn-workflow-cli-artifacts-rhel8:1.33.0
-
+          
           # Authenticate to Red Hat Container Registry
           echo "${{ secrets.REDHAT_REGISTRY_PASSWORD }}" | podman login registry.redhat.io \
             -u ${{ secrets.REDHAT_REGISTRY_USERNAME }} --password-stdin
-
+          
           # Pull the container image
           podman pull $KN_IMAGE
+          
+          # Start a temporary container
+          export KN_CONTAINER_ID=$(podman run -di $KN_IMAGE)
 
-          # Create a temporary container
-          KN_CONTAINER_ID=$(podman create $KN_IMAGE)
+          # Verify the file structure (Debugging Step)
+          podman exec $KN_CONTAINER_ID ls -R /usr/share/kn/
 
-          # Copy the kn-workflow binary from the container
-          podman cp $KN_CONTAINER_ID:/usr/share/kn/linux/amd64/kn-workflow-linux-amd64.tar.gz .
+          # Copy the correct Knative Workflow CLI binary for Linux
+          podman cp $KN_CONTAINER_ID:/usr/share/kn/linux_amd64/kn-workflow-linux-amd64.tar.gz .
 
+          # Stop and remove the container after copying the binary
+          podman stop $KN_CONTAINER_ID
+          podman rm $KN_CONTAINER_ID
+          
           # Extract the binary
           tar xvzf kn-workflow-linux-amd64.tar.gz
-
-          # Rename and move to /usr/local/bin
-          sudo mv kn-workflow-linux-amd64 /usr/local/bin/kn-workflow
+          
+          # Rename the binary
+          mv kn kn-workflow
+          
+          # Move it to /usr/local/bin and make it executable
+          sudo mv kn-workflow /usr/local/bin/kn-workflow
           chmod +x /usr/local/bin/kn-workflow
+          
+          # Verify the installation
+          kn plugin list
 
-          # Clean up the temporary container
-          podman rm $KN_CONTAINER_ID
-
-          # Verify installation
-          kn-workflow version
 
       - name: Set Workflow Path
         run: |
