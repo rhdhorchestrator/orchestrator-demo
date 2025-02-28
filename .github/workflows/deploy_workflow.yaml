@@ -99,9 +99,12 @@ jobs:
           
           if [[ ! -d "$WF_RESOURCES" ]]; then
             echo "::error:: The directory '$WF_RESOURCES' does not exist! Check your WORKFLOW_FOLDER setting."
-            ls -l ${GITHUB_WORKSPACE}/${WORKFLOW_FOLDER}
+            echo "Available directories under ${GITHUB_WORKSPACE}/${WORKFLOW_FOLDER}:"
+            ls -l ${GITHUB_WORKSPACE}/${WORKFLOW_FOLDER} || true
             exit 1
           fi
+
+          echo "Using WF_RESOURCES=$WF_RESOURCES"
 
           podman build -f resources/workflow-builder.Dockerfile \
             --build-arg WF_RESOURCES=${WF_RESOURCES} \
