@@ -71,9 +71,9 @@ jobs:
 
       - name: Set Correct WF_RESOURCES Path and Copy Files
         run: |
-          WF_RESOURCES="${WORKFLOW_PATH}/src/main/resources"
+          WF_RESOURCES="${WORKFLOW_FOLDER}/src/main/resources"
 
-          if [[ ! -d "$WF_RESOURCES" ]]; then
+          if [[ ! -d "$WORKFLOW_PATH/src/main/resources" ]]; then
             echo "::error:: ERROR: The expected resources directory does not exist!"
             exit 1
           fi
