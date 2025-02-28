@@ -22,6 +22,11 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
+      - name: Debug: List all files in the repo
+        run: |
+          echo "DEBUG: Listing repository contents..."
+          ls -R ${GITHUB_WORKSPACE}
+
       - name: Debug Environment Variables
         run: |
           echo "DEBUG: Checking Environment Variables..."
@@ -91,19 +96,31 @@ jobs:
         run: |
           echo "${{ secrets.GITHUB_TOKEN }}" | podman login ghcr.io -u ${{ github.actor }} --password-stdin
 
-      - name: Build and Push Image to GHCR
+      - name: Detect and Set Correct `WF_RESOURCES`
         run: |
-          WF_RESOURCES="${GITHUB_WORKSPACE}/${WORKFLOW_FOLDER}/src/main/resources"
-          
-          if [[ ! -d "$WF_RESOURCES" ]]; then
-            echo "::error:: The directory '$WF_RESOURCES' does not exist! Check your WORKFLOW_FOLDER setting."
-            echo "Available directories under ${GITHUB_WORKSPACE}/${WORKFLOW_FOLDER}:"
-            ls -l ${GITHUB_WORKSPACE}/${WORKFLOW_FOLDER} || true
+          echo "DEBUG: Detecting the correct path for workflow resources..."
+
+          WF_RESOURCES=""
+
+          if [[ -d "${GITHUB_WORKSPACE}/${WORKFLOW_FOLDER}/src/main/resources" ]]; then
+            WF_RESOURCES="${GITHUB_WORKSPACE}/${WORKFLOW_FOLDER}/src/main/resources"
+          elif [[ -d "${GITHUB_WORKSPACE}/${WORKFLOW_FOLDER}/resources" ]]; then
+            WF_RESOURCES="${GITHUB_WORKSPACE}/${WORKFLOW_FOLDER}/resources"
+          fi
+
+          if [[ -z "$WF_RESOURCES" ]]; then
+            echo "::error:: The directory for workflow resources could not be found!"
+            echo "Checked paths:"
+            echo " - ${GITHUB_WORKSPACE}/${WORKFLOW_FOLDER}/src/main/resources"
+            echo " - ${GITHUB_WORKSPACE}/${WORKFLOW_FOLDER}/resources"
             exit 1
           fi
 
-          echo "Using WF_RESOURCES=$WF_RESOURCES"
+          echo "Final WF_RESOURCES path: $WF_RESOURCES"
+          echo "WF_RESOURCES=$WF_RESOURCES" >> $GITHUB_ENV
 
+      - name: Build and Push Image to GHCR
+        run: |
           podman build -f resources/workflow-builder.Dockerfile \
             --build-arg WF_RESOURCES=${WF_RESOURCES} \
             --build-arg FLOW_NAME="${WORKFLOW_ID}" \
@@ -124,62 +141,3 @@ jobs:
             -H "Accept: application/vnd.github.v3+json" \
             -d '{"visibility":"public"}'
 
-  generate-manifests:
-    name: Generate OpenShift Manifests
-    runs-on: ubuntu-latest
-    needs: build-workflow
-
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: Install Required CLI Tools
-        run: |
-          sudo apt update
-          sudo apt install -y yq jq
-          curl -LO https://mirror.openshift.com/pub/openshift-v4/clients/oc/latest/linux/oc.tar.gz
-          tar -xvzf oc.tar.gz
-          sudo mv oc /usr/local/bin/
-          curl -LO https://downloads.kogito.kie.org/tools/kn-workflow-cli/latest/kn-workflow-linux-amd64
-          chmod +x kn-workflow-linux-amd64
-          sudo mv kn-workflow-linux-amd64 /usr/local/bin/kn-workflow
-
-      - name: Generate OpenShift Manifests
-        run: |
-          mkdir -p ${MANIFESTS_DIR}
-          cd ${WORKFLOW_PATH}/src/main/resources
-          echo -e "\nquarkus.flyway.migrate-at-start=true" >> application.properties
-          kn-workflow gen-manifest
-
-      - name: Commit Updated Manifests
-        run: |
-          git config --global user.name "GitHub Actions"
-          git config --global user.email "actions@github.com"
-          git checkout ${{ github.ref_name }}
-          git add ${MANIFESTS_DIR}/*
-          git commit -m "Updating OpenShift manifests for workflow ${WORKFLOW_ID} [GitHub Actions]" || echo "No changes to commit"
-          git push origin ${{ github.ref_name }}
-
-  deploy-to-openshift:
-    name: Deploy to OpenShift
-    runs-on: ubuntu-latest
-    needs: generate-manifests
-
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: Install OpenShift CLI (oc)
-        run: |
-          curl -LO https://mirror.openshift.com/pub/openshift-v4/clients/oc/latest/linux/oc.tar.gz
-          tar -xvzf oc.tar.gz
-          sudo mv oc /usr/local/bin/
-
-      - name: Log in to OpenShift
-        run: |
-          oc login --server=${{ secrets.OCP_API_SERVER }} --token=${{ secrets.OCP_API_TOKEN }} --insecure-skip-tls-verify=true
-
-      - name: Apply OpenShift Manifests
-        run: |
-          TARGET_NS=${{ secrets.TARGET_NAMESPACE }}
-          oc apply -f ${MANIFESTS_DIR} -n $TARGET_NS
