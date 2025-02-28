@@ -22,11 +22,6 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Debug: List all files in the repo
-        run: |
-          echo "DEBUG: Listing entire repository contents..."
-          ls -R ${GITHUB_WORKSPACE}
-
       - name: Debug Environment Variables
         run: |
           echo "DEBUG: Checking Environment Variables..."
@@ -60,7 +55,7 @@ jobs:
       - name: Extract Workflow ID and Path
         run: |
           echo "DEBUG: Checking and setting WORKFLOW_PATH..."
-
+          
           WORKFLOW_FOLDER="${{ secrets.WORKFLOW_FOLDER }}"
           if [[ -z "$WORKFLOW_FOLDER" ]]; then
             echo "::error:: WORKFLOW_FOLDER is not set in GitHub Secrets! Exiting."
@@ -96,27 +91,19 @@ jobs:
         run: |
           echo "${{ secrets.GITHUB_TOKEN }}" | podman login ghcr.io -u ${{ github.actor }} --password-stdin
 
-      - name: Detect and Adjust WF_RESOURCES Path
+      - name: Build and Push Image to GHCR
         run: |
-          echo "DEBUG: Detecting resources path..."
           WF_RESOURCES="${GITHUB_WORKSPACE}/${WORKFLOW_FOLDER}/src/main/resources"
           
           if [[ ! -d "$WF_RESOURCES" ]]; then
-            echo "::warning:: Path '$WF_RESOURCES' not found! Trying alternative..."
-            WF_RESOURCES="${GITHUB_WORKSPACE}/${WORKFLOW_FOLDER}/resources"
-          fi
-
-          if [[ ! -d "$WF_RESOURCES" ]]; then
             echo "::error:: The directory '$WF_RESOURCES' does not exist! Check your WORKFLOW_FOLDER setting."
-            ls -R ${GITHUB_WORKSPACE}/${WORKFLOW_FOLDER} || true
+            echo "Available directories under ${GITHUB_WORKSPACE}/${WORKFLOW_FOLDER}:"
+            ls -l ${GITHUB_WORKSPACE}/${WORKFLOW_FOLDER} || true
             exit 1
           fi
 
-          echo "Final WF_RESOURCES path: $WF_RESOURCES"
-          echo "WF_RESOURCES=$WF_RESOURCES" >> $GITHUB_ENV
+          echo "Using WF_RESOURCES=$WF_RESOURCES"
 
-      - name: Build and Push Image to GHCR
-        run: |
           podman build -f resources/workflow-builder.Dockerfile \
             --build-arg WF_RESOURCES=${WF_RESOURCES} \
             --build-arg FLOW_NAME="${WORKFLOW_ID}" \
@@ -128,6 +115,14 @@ jobs:
 
           podman push ${IMAGE_NAME}:${IMAGE_TAG}
           podman push ${IMAGE_NAME}:latest
+
+      - name: Make Image Public
+        run: |
+          IMAGE_REPO=$(echo "${IMAGE_NAME}" | sed 's|ghcr.io/||')
+          curl -X PATCH https://api.github.com/orgs/${{ github.repository_owner }}/packages/container/${IMAGE_REPO}/visibility \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            -d '{"visibility":"public"}'
 
   generate-manifests:
     name: Generate OpenShift Manifests
