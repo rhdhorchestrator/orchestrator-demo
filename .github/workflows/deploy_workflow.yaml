@@ -95,8 +95,16 @@ jobs:
 
       - name: Build and Push Image to GHCR
         run: |
+          WF_RESOURCES="${GITHUB_WORKSPACE}/${WORKFLOW_FOLDER}/src/main/resources"
+          
+          if [[ ! -d "$WF_RESOURCES" ]]; then
+            echo "::error:: The directory '$WF_RESOURCES' does not exist! Check your WORKFLOW_FOLDER setting."
+            ls -l ${GITHUB_WORKSPACE}/${WORKFLOW_FOLDER}
+            exit 1
+          fi
+
           podman build -f resources/workflow-builder.Dockerfile \
-            --build-arg WF_RESOURCES=${WORKFLOW_PATH} \
+            --build-arg WF_RESOURCES=${WF_RESOURCES} \
             --build-arg FLOW_NAME="${WORKFLOW_ID}" \
             --build-arg FLOW_SUMMARY="Workflow ${WORKFLOW_ID}" \
             --build-arg FLOW_DESCRIPTION="Automated workflow deployment for ${WORKFLOW_ID}" \
