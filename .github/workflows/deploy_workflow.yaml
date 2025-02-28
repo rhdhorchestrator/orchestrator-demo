@@ -132,7 +132,7 @@ jobs:
             -H "Accept: application/vnd.github.v3+json" \
             -d '{"visibility":"public"}'
 
-  generate-manifests:
+    generate-manifests:
     name: Generate OpenShift Manifests
     runs-on: ubuntu-latest
     needs: build-workflow
@@ -153,14 +153,18 @@ jobs:
         run: |
           export KN_IMAGE=registry.redhat.io/openshift-serverless-1/logic-kn-workflow-cli-artifacts-rhel8:1.33.0
           
+          # Authenticate to Red Hat Container Registry
+          echo "${{ secrets.REDHAT_REGISTRY_PASSWORD }}" | podman login registry.redhat.io \
+            -u ${{ secrets.REDHAT_REGISTRY_USERNAME }} --password-stdin
+          
           # Pull the container image
           podman pull $KN_IMAGE
           
           # Create a temporary container
           KN_CONTAINER_ID=$(podman create $KN_IMAGE)
           
-          # Copy the kn-workflow binary from the container (Linux architecture)
-          podman cp $KN_CONTAINER_ID:/usr/share/kn/linux-amd64/kn-workflow-linux-amd64.tar.gz .
+          # Copy the kn-workflow binary from the container
+          podman cp $KN_CONTAINER_ID:/usr/share/kn/linux/amd64/kn-workflow-linux-amd64.tar.gz .
           
           # Extract the binary
           tar xvzf kn-workflow-linux-amd64.tar.gz
@@ -175,10 +179,33 @@ jobs:
           # Verify installation
           kn-workflow version
 
+      - name: Set Workflow Path
+        run: |
+          echo "Setting workflow path..."
+          WORKFLOW_FOLDER="${{ secrets.WORKFLOW_FOLDER }}"
+          if [[ -z "$WORKFLOW_FOLDER" ]]; then
+            echo "::error:: WORKFLOW_FOLDER is not set!"
+            exit 1
+          fi
+
+          WORKFLOW_PATH="${GITHUB_WORKSPACE}/${WORKFLOW_FOLDER}"
+          echo "WORKFLOW_PATH=${WORKFLOW_PATH}" >> $GITHUB_ENV
+
+          if [[ ! -d "$WORKFLOW_PATH/src/main/resources" ]]; then
+            echo "::error:: ERROR: The expected resources directory does not exist!"
+            echo "Checked path: $WORKFLOW_PATH/src/main/resources"
+            exit 1
+          fi
+
       - name: Generate OpenShift Manifests
         run: |
           mkdir -p ${MANIFESTS_DIR}
           cd ${WORKFLOW_PATH}/src/main/resources
-          echo -e "\nquarkus.flyway.migrate-at-start=true" >> application.properties
+
+          # Append quarkus.flyway.migrate-at-start=true only if it's missing
+          grep -qxF "quarkus.flyway.migrate-at-start=true" application.properties || \
+          echo "quarkus.flyway.migrate-at-start=true" >> application.properties
+          
           kn-workflow gen-manifest
+
 
