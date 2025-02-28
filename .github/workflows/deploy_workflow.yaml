@@ -25,7 +25,7 @@ jobs:
       - name: Validate Variables for Build Job
         run: |
           echo "Validating variables for Build Job..."
-          REQUIRED_VARS=("WORKFLOW_IMAGE_REGISTRY" "WORKFLOW_IMAGE_NAMESPACE" "GITHUB_SHA")
+          REQUIRED_VARS=("WORKFLOW_IMAGE_REGISTRY" "WORKFLOW_IMAGE_NAMESPACE" "GITHUB_SHA" "WORKFLOW_FOLDER")
           MISSING_VARS=()
 
           for var in "${REQUIRED_VARS[@]}"; do
@@ -40,26 +40,26 @@ jobs:
             exit 1
           fi
 
-      - name: Extract Workflow ID and Folder Name
+      - name: Extract Workflow ID and Folder Path
         run: |
-          WORKFLOW_ID=$(basename $GITHUB_WORKSPACE)
-          WORKFLOW_FOLDER=$(basename $GITHUB_WORKSPACE)
+          WORKFLOW_PATH="${GITHUB_WORKSPACE}/${{ secrets.WORKFLOW_FOLDER }}"
+          WORKFLOW_ID=$(basename "${WORKFLOW_PATH}")
 
+          echo "WORKFLOW_PATH=${WORKFLOW_PATH}" >> $GITHUB_ENV
           echo "WORKFLOW_ID=${WORKFLOW_ID}" >> $GITHUB_ENV
-          echo "WORKFLOW_FOLDER=${WORKFLOW_FOLDER}" >> $GITHUB_ENV
           echo "IMAGE_NAME=${WORKFLOW_IMAGE_REGISTRY}/${WORKFLOW_IMAGE_NAMESPACE}/demo-${WORKFLOW_ID}" >> $GITHUB_ENV
 
-      - name: Validate Repository Structure
+      - name: Validate Workflow Directory
         run: |
-          if [[ ! -d "${WORKFLOW_FOLDER}" ]]; then
-            echo "::error:: WORKFLOW_FOLDER '${WORKFLOW_FOLDER}' does not exist! Check your repository structure."
+          if [[ ! -d "${WORKFLOW_PATH}" ]]; then
+            echo "::error:: WORKFLOW_FOLDER '${WORKFLOW_FOLDER}' does not exist in the repository! Check your GitHub Secret configuration."
             exit 1
           fi
 
-          if [[ ! -d "${WORKFLOW_FOLDER}/src/main/resources" ]]; then
-            echo "::warning:: Directory '${WORKFLOW_FOLDER}/src/main/resources' not found. Skipping move."
+          if [[ ! -d "${WORKFLOW_PATH}/src/main/resources" ]]; then
+            echo "::warning:: Directory '${WORKFLOW_PATH}/src/main/resources' not found. Skipping move."
           else
-            mv ${WORKFLOW_FOLDER}/src/main/resources ${WORKFLOW_FOLDER}/.
+            mv ${WORKFLOW_PATH}/src/main/resources ${WORKFLOW_PATH}/.
             echo "Moved 'src/main/resources' successfully."
           fi
 
@@ -75,7 +75,7 @@ jobs:
       - name: Build and Push Image to GHCR
         run: |
           podman build -f resources/workflow-builder.Dockerfile \
-            --build-arg WF_RESOURCES=${WORKFLOW_FOLDER} \
+            --build-arg WF_RESOURCES=${WORKFLOW_PATH} \
             --ulimit nofile=4096:4096 \
             --tag ${IMAGE_NAME}:${IMAGE_TAG} \
             --tag ${IMAGE_NAME}:latest .
@@ -102,24 +102,6 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Validate Variables for Manifest Generation
-        run: |
-          echo "Validating variables for Manifest Generation..."
-          REQUIRED_VARS=("WORKFLOW_ID" "WORKFLOW_FOLDER" "WORKFLOW_IMAGE_REGISTRY" "WORKFLOW_IMAGE_NAMESPACE" "TARGET_NS")
-          MISSING_VARS=()
-
-          for var in "${REQUIRED_VARS[@]}"; do
-            if [[ -z "${!var}" ]]; then
-              MISSING_VARS+=("$var")
-            fi
-          done
-
-          if [[ ${#MISSING_VARS[@]} -gt 0 ]]; then
-            echo "::error:: The following required variables for Manifest Generation are missing:"
-            printf "::error:: - %s\n" "${MISSING_VARS[@]}"
-            exit 1
-          fi
-
       - name: Install Required CLI Tools
         run: |
           sudo apt update
@@ -135,35 +117,35 @@ jobs:
         run: |
           mkdir -p ${MANIFESTS_DIR}
 
-          if [[ ! -d "${WORKFLOW_FOLDER}/src/main/resources" ]]; then
-            echo "::error:: Directory '${WORKFLOW_FOLDER}/src/main/resources' not found. Cannot generate manifests."
+          if [[ ! -d "${WORKFLOW_PATH}/src/main/resources" ]]; then
+            echo "::error:: Directory '${WORKFLOW_PATH}/src/main/resources' not found. Cannot generate manifests."
             exit 1
           fi
 
-          cd ${WORKFLOW_FOLDER}/src/main/resources
+          cd ${WORKFLOW_PATH}/src/main/resources
           echo -e "\nquarkus.flyway.migrate-at-start=true" >> application.properties
           kn-workflow gen-manifest
 
-      - name: Update OpenShift Manifests
+      - name: Handle Large ConfigMaps
         run: |
-          cd ${WORKFLOW_FOLDER}/src/main/resources/manifests
+          CONFIG_FILE="${WORKFLOW_PATH}/src/main/resources/application.properties"
+          MAX_SIZE=1048576  # 1MB
 
-          find . -name '*.yaml' -exec yq --inplace '.metadata.namespace = ""' {} \;
+          if [[ $(wc -c <"$CONFIG_FILE") -gt $MAX_SIZE ]]; then
+            echo "::warning:: ConfigMap is too large! Splitting into multiple smaller ConfigMaps..."
 
-          workflow_file=$(ls *-sonataflow-*.yaml | head -n 1)
-          if [[ -z "$workflow_file" ]]; then
-            echo "::error:: No SonataFlow CR found!"
-            exit 1
+            split -b $MAX_SIZE "$CONFIG_FILE" "${CONFIG_FILE}_part_"
+
+            for part in $(ls ${CONFIG_FILE}_part_*); do
+              PART_NAME="config-part-$(basename $part)"
+              yq --inplace ".metadata.name = \"$PART_NAME\"" "manifests/${PART_NAME}.yaml"
+              yq --inplace ".data.\"config-part\" = \"$(base64 -w 0 < $part)\"" "manifests/${PART_NAME}.yaml"
+            done
+
+            PARENT_CONFIG="manifests/workflow-config-parent.yaml"
+            yq --inplace ".metadata.name = \"workflow-config-parent\"" "$PARENT_CONFIG"
+            yq --inplace ".data.childConfigs = \"$(ls ${CONFIG_FILE}_part_* | tr '\n' ',' | sed 's/,$//')\"" "$PARENT_CONFIG"
           fi
-
-          WORKFLOW_CR=$(yq '.metadata.name' "$workflow_file")
-          if [[ -z "$WORKFLOW_CR" ]]; then
-            echo "::error:: Failed to extract workflow ID from manifest!"
-            exit 1
-          fi
-
-          yq --inplace eval '.metadata.annotations["sonataflow.org/profile"] = "gitops"' "$workflow_file"
-          yq --inplace ".spec.podTemplate.container.image=\"${WORKFLOW_IMAGE_REGISTRY}/${WORKFLOW_IMAGE_NAMESPACE}/demo-${WORKFLOW_ID}:${IMAGE_TAG}\"" "$workflow_file"
 
       - name: Commit Updated Manifests to the Same Branch
         run: |
