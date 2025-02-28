@@ -175,16 +175,26 @@ jobs:
           
           # Extract the binary
           tar xvzf kn-workflow-linux-amd64.tar.gz
-          
-          # Rename the binary
-          mv kn kn-workflow
+
+          # Check if the extracted file is actually `kn`
+          if [[ -f "kn" ]]; then
+            echo "Renaming extracted file from kn to kn-workflow"
+            mv kn kn-workflow
+          elif [[ -f "kn-workflow-linux-amd64" ]]; then
+            echo "Renaming extracted file from kn-workflow-linux-amd64 to kn-workflow"
+            mv kn-workflow-linux-amd64 kn-workflow
+          else
+            echo "::error:: Could not find the extracted kn binary!"
+            exit 1
+          fi
           
           # Move it to /usr/local/bin and make it executable
           sudo mv kn-workflow /usr/local/bin/kn-workflow
           chmod +x /usr/local/bin/kn-workflow
           
           # Verify the installation
-          kn plugin list
+          which kn-workflow
+          kn-workflow version
 
       - name: Set Workflow Path
         run: |
