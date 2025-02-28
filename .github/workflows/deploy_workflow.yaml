@@ -31,7 +31,7 @@ jobs:
       - name: Validate Environment Variables
         run: |
           REQUIRED_VARS=("WORKFLOW_IMAGE_REGISTRY" "WORKFLOW_IMAGE_NAMESPACE" "GITHUB_SHA" "TARGET_NS")
-          
+
           if [[ -z "${{ secrets.WORKFLOW_FOLDER }}" ]]; then
             echo "::error:: WORKFLOW_FOLDER is not set in GitHub Secrets. Please configure it."
             exit 1
@@ -66,6 +66,22 @@ jobs:
             exit 1
           fi
 
+      - name: Set Correct WF_RESOURCES Path and Copy Files
+        run: |
+          WF_RESOURCES="${WORKFLOW_FOLDER}/src/main/resources"
+
+          if [[ ! -d "$WORKFLOW_PATH/src/main/resources" ]]; then
+            echo "::error:: ERROR: The expected resources directory does not exist!"
+            exit 1
+          fi
+
+          echo "Using WF_RESOURCES: $WF_RESOURCES"
+          echo "WF_RESOURCES=${WF_RESOURCES}" >> $GITHUB_ENV
+
+          mkdir -p build-context
+          cp -r ${WORKFLOW_PATH} build-context/
+          cp -r resources build-context/
+
       - name: Install Podman
         run: |
           sudo apt update
@@ -81,8 +97,13 @@ jobs:
 
       - name: Build and Push Image to GHCR
         run: |
-          cd ${WORKFLOW_PATH}
+          cd build-context
           podman build -f resources/workflow-builder.Dockerfile \
+            --build-arg WF_RESOURCES=${WF_RESOURCES} \
+            --build-arg FLOW_NAME="${WORKFLOW_ID}" \
+            --build-arg FLOW_SUMMARY="Workflow ${WORKFLOW_ID}" \
+            --build-arg FLOW_DESCRIPTION="Automated workflow deployment for ${WORKFLOW_ID}" \
+            --ulimit nofile=4096:4096 \
             --tag ${IMAGE_NAME}:${IMAGE_TAG} \
             --tag ${IMAGE_NAME}:latest .
 
@@ -107,8 +128,9 @@ jobs:
           WORKFLOW_PATH="${GITHUB_WORKSPACE}/${{ secrets.WORKFLOW_FOLDER }}"
           echo "Resolved WORKFLOW_PATH=${WORKFLOW_PATH}"
 
-          if [[ ! -d "$WORKFLOW_PATH" ]]; then
-            echo "::error:: ❌ ERROR: WORKFLOW_PATH does not exist!"
+          if [[ ! -d "$WORKFLOW_PATH/src/main/resources" ]]; then
+            echo "::error:: ❌ ERROR: Directory ${WORKFLOW_PATH}/src/main/resources does not exist!"
+            ls -l ${WORKFLOW_PATH}
             exit 1
           fi
 
@@ -133,9 +155,7 @@ jobs:
           podman rm $KN_CONTAINER_ID
           tar xvzf kn-workflow-linux-amd64.tar.gz
 
-          if [[ -f "kn" ]]; then
-            mv kn kn-workflow
-          elif [[ -f "kn-workflow-linux-amd64" ]]; then
+          if [[ -f "kn-workflow-linux-amd64" ]]; then
             mv kn-workflow-linux-amd64 kn-workflow
           else
             echo "::error:: kn-workflow binary missing!"
@@ -150,11 +170,6 @@ jobs:
       - name: Generate OpenShift Manifests
         run: |
           mkdir -p ${MANIFESTS_DIR}
-
-          if [[ ! -d "${WORKFLOW_PATH}/src/main/resources" ]]; then
-            echo "::error:: ❌ ERROR: Directory ${WORKFLOW_PATH}/src/main/resources does not exist!"
-            exit 1
-          fi
 
           cd ${WORKFLOW_PATH}/src/main/resources
 
