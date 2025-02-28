@@ -62,12 +62,6 @@ jobs:
             exit 1
           fi
 
-          # Ensure WORKFLOW_FOLDER is not duplicating the repository name
-          if [[ "$WORKFLOW_FOLDER" == /* ]]; then
-            echo "::error:: WORKFLOW_FOLDER should be a relative path, not an absolute one."
-            exit 1
-          fi
-
           WORKFLOW_PATH="${GITHUB_WORKSPACE}/${WORKFLOW_FOLDER}"
           WORKFLOW_ID=$(basename "$WORKFLOW_FOLDER")
 
@@ -78,9 +72,10 @@ jobs:
 
       - name: Validate Workflow Directory
         run: |
+          echo "Checking if workflow folder exists: $WORKFLOW_PATH"
           if [[ ! -d "$WORKFLOW_PATH" ]]; then
             echo "::error:: WORKFLOW_FOLDER '${WORKFLOW_FOLDER}' does not exist in the repository!"
-            echo "Check your GitHub Secrets. Expected path: $WORKFLOW_PATH"
+            echo "Expected path: $WORKFLOW_PATH"
             ls -l ${GITHUB_WORKSPACE}
             exit 1
           fi
