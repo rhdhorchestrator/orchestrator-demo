@@ -149,7 +149,7 @@ jobs:
           tar -xvzf oc.tar.gz
           sudo mv oc /usr/local/bin/
 
-            - name: Install kn-workflow CLI using Podman
+      - name: Install kn-workflow CLI using Podman
         run: |
           export KN_IMAGE=registry.redhat.io/openshift-serverless-1/logic-kn-workflow-cli-artifacts-rhel8:1.33.0
           
@@ -185,7 +185,6 @@ jobs:
           
           # Verify the installation
           kn plugin list
-
 
       - name: Set Workflow Path
         run: |
