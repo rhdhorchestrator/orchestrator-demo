@@ -25,25 +25,19 @@ jobs:
       - name: Debug Environment Variables
         run: |
           echo "DEBUG: Checking Environment Variables..."
-          echo "GITHUB_WORKSPACE='${GITHUB_WORKSPACE}'"
-          echo "WORKFLOW_FOLDER='${{ secrets.WORKFLOW_FOLDER }}'"
+          echo "GITHUB_WORKSPACE=${GITHUB_WORKSPACE}"
+          echo "WORKFLOW_FOLDER=${{ secrets.WORKFLOW_FOLDER }}"
 
       - name: Validate Environment Variables
         run: |
           REQUIRED_VARS=("WORKFLOW_IMAGE_REGISTRY" "WORKFLOW_IMAGE_NAMESPACE" "GITHUB_SHA" "TARGET_NS")
-          
-          MISSING_VARS=()
+
           for var in "${REQUIRED_VARS[@]}"; do
             if [[ -z "${!var}" ]]; then
-              MISSING_VARS+=("$var")
+              echo "::error:: Missing required variable: $var"
+              exit 1
             fi
           done
-
-          if [[ ${#MISSING_VARS[@]} -gt 0 ]]; then
-            echo "::error:: The following required variables are missing:"
-            printf "::error:: - %s\n" "${MISSING_VARS[@]}"
-            exit 1
-          fi
 
       - name: Extract Workflow ID and Path
         run: |
