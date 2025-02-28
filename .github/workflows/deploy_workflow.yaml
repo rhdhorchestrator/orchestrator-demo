@@ -27,7 +27,6 @@ jobs:
           echo "DEBUG: Checking Environment Variables..."
           echo "GITHUB_WORKSPACE='${GITHUB_WORKSPACE}'"
           echo "WORKFLOW_FOLDER='${{ secrets.WORKFLOW_FOLDER }}'"
-          echo "Resolved WORKFLOW_PATH='${GITHUB_WORKSPACE}/${{ secrets.WORKFLOW_FOLDER }}'"
 
       - name: Validate Environment Variables
         run: |
@@ -55,9 +54,22 @@ jobs:
 
       - name: Extract Workflow ID and Path
         run: |
+          echo "DEBUG: Checking and setting WORKFLOW_PATH..."
+          
           WORKFLOW_FOLDER="${{ secrets.WORKFLOW_FOLDER }}"
+          if [[ -z "$WORKFLOW_FOLDER" ]]; then
+            echo "::error:: WORKFLOW_FOLDER is not set in GitHub Secrets. Please configure it."
+            exit 1
+          fi
+
+          # Ensure WORKFLOW_FOLDER is not duplicating the repository name
+          if [[ "$WORKFLOW_FOLDER" == /* ]]; then
+            echo "::error:: WORKFLOW_FOLDER should be a relative path, not an absolute one."
+            exit 1
+          fi
+
           WORKFLOW_PATH="${GITHUB_WORKSPACE}/${WORKFLOW_FOLDER}"
-          WORKFLOW_ID=$(basename "${WORKFLOW_FOLDER}")
+          WORKFLOW_ID=$(basename "$WORKFLOW_FOLDER")
 
           echo "Resolved WORKFLOW_PATH=${WORKFLOW_PATH}"
           echo "WORKFLOW_PATH=${WORKFLOW_PATH}" >> $GITHUB_ENV
