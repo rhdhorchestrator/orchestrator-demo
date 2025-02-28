@@ -22,12 +22,26 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
+      - name: Debug Environment Variables
+        run: |
+          echo "DEBUG: Checking Environment Variables..."
+          echo "WORKFLOW_FOLDER=${{ secrets.WORKFLOW_FOLDER }}"
+          echo "WORKFLOW_IMAGE_REGISTRY=${WORKFLOW_IMAGE_REGISTRY}"
+          echo "WORKFLOW_IMAGE_NAMESPACE=${WORKFLOW_IMAGE_NAMESPACE}"
+          echo "TARGET_NS=${TARGET_NS}"
+          echo "GITHUB_SHA=${GITHUB_SHA}"
+
       - name: Validate Variables for Build Job
         run: |
           echo "Validating variables for Build Job..."
-          REQUIRED_VARS=("WORKFLOW_IMAGE_REGISTRY" "WORKFLOW_IMAGE_NAMESPACE" "GITHUB_SHA" "WORKFLOW_FOLDER")
-          MISSING_VARS=()
+          REQUIRED_VARS=("WORKFLOW_IMAGE_REGISTRY" "WORKFLOW_IMAGE_NAMESPACE" "GITHUB_SHA")
 
+          if [[ -z "${{ secrets.WORKFLOW_FOLDER }}" ]]; then
+            echo "::error:: WORKFLOW_FOLDER is not set in GitHub Secrets. Please configure it."
+            exit 1
+          fi
+
+          MISSING_VARS=()
           for var in "${REQUIRED_VARS[@]}"; do
             if [[ -z "${!var}" ]]; then
               MISSING_VARS+=("$var")
@@ -40,10 +54,13 @@ jobs:
             exit 1
           fi
 
+          echo "WORKFLOW_FOLDER=${{ secrets.WORKFLOW_FOLDER }}" >> $GITHUB_ENV
+
       - name: Extract Workflow ID and Folder Path
         run: |
-          WORKFLOW_PATH="${GITHUB_WORKSPACE}/${{ secrets.WORKFLOW_FOLDER }}"
-          WORKFLOW_ID=$(basename "${WORKFLOW_PATH}")
+          WORKFLOW_FOLDER="${{ secrets.WORKFLOW_FOLDER }}"
+          WORKFLOW_PATH="${GITHUB_WORKSPACE}/${WORKFLOW_FOLDER}"
+          WORKFLOW_ID=$(basename "${WORKFLOW_FOLDER}")
 
           echo "WORKFLOW_PATH=${WORKFLOW_PATH}" >> $GITHUB_ENV
           echo "WORKFLOW_ID=${WORKFLOW_ID}" >> $GITHUB_ENV
@@ -54,13 +71,6 @@ jobs:
           if [[ ! -d "${WORKFLOW_PATH}" ]]; then
             echo "::error:: WORKFLOW_FOLDER '${WORKFLOW_FOLDER}' does not exist in the repository! Check your GitHub Secret configuration."
             exit 1
-          fi
-
-          if [[ ! -d "${WORKFLOW_PATH}/src/main/resources" ]]; then
-            echo "::warning:: Directory '${WORKFLOW_PATH}/src/main/resources' not found. Skipping move."
-          else
-            mv ${WORKFLOW_PATH}/src/main/resources ${WORKFLOW_PATH}/.
-            echo "Moved 'src/main/resources' successfully."
           fi
 
       - name: Install Podman
