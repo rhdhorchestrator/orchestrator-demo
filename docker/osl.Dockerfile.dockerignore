@@ -1,0 +1,5 @@
+*
+!LICENSE
+!pom.xml
+!src/main/java/**/*
+!src/main/resources/**/*
