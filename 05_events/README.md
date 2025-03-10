@@ -23,20 +23,46 @@ No needed input
 ![events diagram](src/main/resources/events.svg)
 
 ## Installation
+To build the workflow image and push it to the image registry, use the [./scripts/build.sh](../scripts/build.sh) script:
+```bash
+This script performs the following tasks in this specific order:
+1. Generates a list of Operator manifests for a SonataFlow project using the kn-workflow plugin (requires at least v1.35.0)
+2. Builds the workflow image using podman or docker
+3. Optionally, deploys the application:
+    - Pushes the workflow image to the container registry specified by the image path
+    - Applies the generated manifests using kubectl in the current k8s namespace
+
+Usage: 
+    ./scripts/build.sh [flags]
+
+Flags:
+    -i|--image=<string> (required)       The full container image path to use for the workflow, e.g: quay.io/orchestrator/demo.
+    -b|--builder-image=<string>          Overrides the image to use for building the workflow image.
+    -r|--runtime-image=<string>          Overrides the image to use for running the workflow.
+    -n|--namespace=<string>              The target namespace where the manifests will be applied. Default: current namespace.
+    -m|--manifests-directory=<string>    The operator manifests will be generated inside the specified directory. Default: 'manifests' directory in the current directory.
+    -w|--workflow-directory=<string>     Path to the directory containing the workflow's files (the 'src' directory). Default: current directory.
+    -P|--no-persistence                  Skips adding persistence configuration to the sonataflow CR.
+       --deploy                          Deploys the application.
+    -h|--help                            Prints this help message.
+
+Notes: 
+    - This script respects the 'QUARKUS_EXTENSIONS' and 'MAVEN_ARGS_APPEND' environment variables.
+```
 
 Use the scripts:
-* Build and push the image:
+1. Build the image and generate the manifests:
 ```
-cd ..
-WORKFLOW_ID=basic WORKFLOW_FOLDER=05_events WORKFLOW_IMAGE_REGISTRY=quay.io WORKFLOW_IMAGE_NAMESPACE=orchestrator ./scripts/build-push.sh
+../scripts/build.sh --image=quay.io/orchestrator/demo-eventing -n sonataflow-infra
 ```
-* Generate manifests that have to be applied on the OCP cluster wiht RHDH and OSL:
-```
-WORKFLOW_ID=basic WORKFLOW_FOLDER=05_events WORKFLOW_IMAGE_REGISTRY=quay.io WORKFLOW_IMAGE_NAMESPACE=orchestrator ./scripts/gen-manifest.sh
-```
-The manifests location will be displayed by the script.
 
-To apply the manifests, run:
+The manifests location will be displayed by the script.
+2. Push the image
+```
+docker push <image>
+```
+
+3. Apply the manifests:
 ```
 TARGET_NS=sonataflow-infra
 oc -n ${TARGET_NS} apply -f <path to manifests folder>/00-secret_*.yaml
@@ -44,10 +70,17 @@ oc -n ${TARGET_NS} apply -f <path to manifests folder>/02-configmap_*-props.yaml
 oc -n ${TARGET_NS} apply -f <path to manifests folder>/01-sonataflow_*.yaml
 ```
 
+All the previous steps can be done together by running:
+```
+../scripts/build.sh --image=quay.io/orchestrator/demo-eventing -n sonataflow-infra --deploy
+```
+
+
 Then deploy the server producing and listening for cloudevents:
 ```
 oc -n ${TARGET_NS} apply -f 05_events/server_resources/deployment.yaml
 ```
+
 > [!NOTE]
 > This deployment uses our image, if you want to rebuild your own, execute 05_events/server_resources/build-image.sh
 
@@ -65,7 +98,7 @@ Note that the trigger and the broker must be in the same namespace.
 Now to trigger the workflow, from within the `cloudevent-listener` pod, send a `POST` request to the server:
 ```
 BROKER_URL=$(oc -n ${TARGET_NS} get broker -o yaml | yq -r .items[0].status.address.url)
-curl -XPOST "http://localhost:8080/trigger?source=manual&type=wait&broker_url=${BROKER_URL}"
+curl -XPOST "http://cloudevent-listener-svc/trigger?source=manual&type=wait&broker_url=${BROKER_URL}"
 ```
 You can also expose a route for the `cloudevent-listener` so you can trigger the event from outside the pod.
 

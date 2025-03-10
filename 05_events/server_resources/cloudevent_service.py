@@ -1,18 +1,21 @@
 import requests
+import logging
+
 from flask import Flask, request, jsonify
 from cloudevents.http import CloudEvent, from_http, to_structured
 
 app = Flask(__name__)
+logging.basicConfig(level=logging.DEBUG)
 
 # CloudEvent Listener (Receives events)
 @app.route("/", methods=["POST"])
 def receive_cloudevent():
     event = from_http(request.headers, request.get_data())
 
-    print(f"Received CloudEvent:")
-    print(f"  Type: {event['type']}")
-    print(f"  Source: {event['source']}")
-    print(f"  Data: {event.data}")
+    app.logger.info(f"Received CloudEvent:")
+    app.logger.info(f"  Type: {event['type']}")
+    app.logger.info(f"  Source: {event['source']}")
+    app.logger.info(f"  Data: {event.data}")
 
     return jsonify({"message": "CloudEvent received"}), 200
 
@@ -41,4 +44,4 @@ def send_cloudevent():
     }), response.status_code
 
 if __name__ == "__main__":
-    app.run(port=8080)
+    app.run(host="0.0.0.0", port=8080)
