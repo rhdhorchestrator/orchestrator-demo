@@ -47,3 +47,5 @@ dist-types
 node_modules
 dist-scalprum
 dist
+
+**/manifests
