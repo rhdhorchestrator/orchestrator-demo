@@ -133,7 +133,7 @@ function gen_manifests {
     local sonataflow_cr
     sonataflow_cr="$(findw "${args["manifests-directory"]}" -type f -name "*-sonataflow_${workflow_id}.yaml")"
 
-    if [[ -f secret.properties ]]; then
+    if [[ -f ${res_dir_path}/secret.properties ]]; then
         yq --inplace ".spec.podTemplate.container.envFrom=[{\"secretRef\": { \"name\": \"${workflow_id}-creds\"}}]" "${sonataflow_cr}"
         kubectl create secret generic "${workflow_id}-creds" \
             --from-env-file=secret.properties \
