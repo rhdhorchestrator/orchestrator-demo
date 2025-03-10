@@ -55,7 +55,8 @@ Use the scripts:
 The manifests location will be displayed by the script.
 2. Push the image
 ```
-docker push <image>
+POCKER=$(command -v podman || command -v docker) "$@"
+$POCKER push <image>
 ```
 
 3. Apply the manifests:
