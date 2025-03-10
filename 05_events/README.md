@@ -5,7 +5,7 @@ The events workflow is a hello world kind of workflow for eventing: it waits for
 Application properties can be initialized from environment variables before running the application: None
 
 ## Pre-requisites
-When deplying on OCP cluster, [eventing communication](https://github.com/rhdhorchestrator/orchestrator-helm-operator/blob/main/docs/main/eventing-communication/README.md) must be enabled.
+When deploying on OCP cluster, [eventing communication](https://github.com/rhdhorchestrator/orchestrator-helm-operator/blob/main/docs/release-1.4/eventing-communication/README.md) must be enabled.
 
 > [!NOTE]
 > Currently this workflow is only usable when deployed on a cluster with
@@ -69,4 +69,6 @@ curl -XPOST "http://localhost:8080/trigger?source=manual&type=wait&broker_url=${
 ```
 You can also expose a route for the `cloudevent-listener` so you can trigger the event from outside the pod.
 
-`BROKER_URL` is populated with a command assuming the broker is in the same namespace as the workflow. If that is not the case, update the command with your value.
+`BROKER_URL` is populated with a command assuming the broker is in the same namespace as the workflow. If that is not the case, update the command with your value. 
+> [!WARNING]
+> The `sontaflow-infra ` namespace has `NetworkPolicies` in place to prevent access from unknown/unauthorized namespace/pods. If the broker is not in the same namespace as the workflow, you may need to add a new `NetworkPolicy` to allow access from the broker's namespace.
