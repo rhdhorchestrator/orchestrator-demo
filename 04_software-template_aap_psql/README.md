@@ -42,36 +42,49 @@ See [demo recording](https://www.youtube.com/watch?v=ApDemFgkjqo).
 
 ---
 
-## Building the Workflow
+## Building and deploying the Workflow
 
-To build the workflow image and push it to the image registry, use the [./scripts/build-push.sh](./scripts/build-push.sh) script:
+To build the workflow image and push it to the image registry, use the [./scripts/build.sh](../scripts/build.sh) script:
 ```bash
-Usage: WORKFLOW_ID=WORKFLOW_ID WORKFLOW_FOLDER=WORKFLOW_FOLDER ./scripts/build-push.sh
-  WORKFLOW_ID                   ID of the workflow to build and push
-  WORKFLOW_FOLDER               Path of the directory containing the workflows files
-  WORKFLOW_IMAGE_REGISTRY       Registry name to which the image will be pushed. I.E: quay.io
-  WORKFLOW_IMAGE_NAMESPACE      Name of the registry's namespace in which store the image. I.E: orchestrator
+This script performs the following tasks in this specific order:
+1. Generates a list of Operator manifests for a SonataFlow project using the kn-workflow plugin (requires at least v1.35.0)
+2. Builds the workflow image using podman or docker
+3. Optionally, deploys the application:
+    - Pushes the workflow image to the container registry specified by the image path
+    - Applies the generated manifests using kubectl in the current k8s namespace
+
+Usage: 
+    ./scripts/build.sh [flags]
+
+Flags:
+    -i|--image=<string> (required)       The full container image path to use for the workflow, e.g: quay.io/orchestrator/demo.
+    -b|--builder-image=<string>          Overrides the image to use for building the workflow image.
+    -r|--runtime-image=<string>          Overrides the image to use for running the workflow.
+    -n|--namespace=<string>              The target namespace where the manifests will be applied. Default: current namespace.
+    -m|--manifests-directory=<string>    The operator manifests will be generated inside the specified directory. Default: 'manifests' directory in the current directory.
+    -w|--workflow-directory=<string>     Path to the directory containing the workflow's files (the 'src' directory). Default: current directory.
+    -P|--no-persistence                  Skips adding persistence configuration to the sonataflow CR.
+       --deploy                          Deploys the application.
+    -h|--help                            Prints this help message.
+
+Notes: 
+    - This script respects the 'QUARKUS_EXTENSIONS' and 'MAVEN_ARGS_APPEND' environment variables.
 ```
 
 Provide the desired values to the env variables and run the following command from the repository's root directory, e.g.:
 
-```bash
-WORKFLOW_ID=aap-db-deploy WORKFLOW_FOLDER=04_software-template_aap_psql/aap-db-deploy-workflow \
-  WORKFLOW_IMAGE_NAMESPACE=orchestrator WORKFLOW_IMAGE_REGISTRY=quay.io ./scripts/build-push.sh
+1. Build the image and generate the manifests:
+```
+../scripts/build.sh --image=quay.io/orchestrator/demo-aap-db-deploy
 ```
 
-## Deploying the Workflow
-To generate the manifests required for deploying the workflow, run:
+The manifests location will be displayed by the script.
+2. Push the image
 ```
-WORKFLOW_ID=aap-db-deploy WORKFLOW_FOLDER=04_software-template_aap_psql/aap-db-deploy-workflow \
-  WORKFLOW_IMAGE_REGISTRY=quay.io WORKFLOW_IMAGE_NAMESPACE=orchestrator ./scripts/gen-manifest.sh
-```
-
-The output will indicate the directory containing the generated manifests:
-```
-Manifests generated in /tmp/tmp.xpngIE1yTP/04_software-template_aap_psql/aap-db-deploy-workflow/src/main/resources/manifests
+docker push <image>
 ```
 
+3. Apply the manifests:
 The generated manifest files (in order of deployment) are:
 ```
 00-secret_aap-db-deploy.yaml
@@ -79,6 +92,11 @@ The generated manifest files (in order of deployment) are:
 02-configmap_01-aap-db-deploy-resources-schemas.yaml
 03-configmap_02-aap-db-deploy-resources-specs.yaml
 04-sonataflow_aap-db-deploy.yaml
+```
+
+All the previous steps can be done together by running:
+```
+../scripts/build.sh --image=quay.io/orchestrator/demo-advanced --deploy
 ```
 
 ### Configuring Secrets
@@ -105,14 +123,6 @@ You can update the secret.properties file before generating the manifests or mod
 
 
 ---
-
-## Deploying Manifests
-
-Switch to the directory containing the generated manifests and deploy the required files:
-
-```bash
-oc apply -n sonataflow-infra -f .
-```
 
 ### Verifying Deployment
 Check that the workflow's Custom Resource (CR) and pod are ready:
