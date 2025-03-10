@@ -4,13 +4,13 @@ specVersion: "0.8"
 name: "events"
 description: Event base workflow
 events:
-- name: produceEvent
-  source: ''
-  type: produce
-  kind: produced
-- name: waitEvent
-  source: ''
-  type: wait
+  - name: produceEvent
+    source: ""
+    type: produce
+    kind: produced
+  - name: waitEvent
+    source: ""
+    type: wait
 extensions:
   - extensionid: workflow-output-schema
     outputSchema: schemas/workflow-output-schema.json
@@ -22,33 +22,34 @@ functions:
     type: expression
     operation: '{
       "result": {
-      "message": eventData.message,
+      "message": .message,
       "outputs":[]
       }
       }'
 start: waitForEvent
 states:
   - name: waitForEvent
-    type: callback
-    eventRef: waitEvent
-    eventDataFilter:
-      data: ".eventData"
-    transition: 
+    type: event
+    onEvents:
+      - eventRefs:
+          - waitEvent
+        actions:
+          - functionRef:
+              refName: print
+              arguments:
+                message: ${ "waitEvent received " + .message }
+    transition:
       nextState: reply
       produceEvents:
         - eventRef: produceEvent
-          data: '{message: "This is the first message", other: "Another field"}'
+          data: '{message: "This is the reply message", other: "Another field"}'
   - name: reply
     type: operation
     actions:
       - functionRef:
           refName: print
           arguments:
-            message: '"Received message: " + .eventData.message'
-      - name: publishAction
-        eventRef:
-          triggerEventRef: produceEvent
-          data: '{message: "This is the second event"}'
+            message: '"Received message: " + .message'
       - name: setOutput
         functionRef:
           refName: successResult
