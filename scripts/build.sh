@@ -133,12 +133,17 @@ function gen_manifests {
     local sonataflow_cr
     sonataflow_cr="$(findw "${args["manifests-directory"]}" -type f -name "*-sonataflow_${workflow_id}.yaml")"
 
-    if [[ -f ${res_dir_path}/secret.properties ]]; then
+    if [[ -f "${res_dir_path}/secret.properties" ]]; then
         yq --inplace ".spec.podTemplate.container.envFrom=[{\"secretRef\": { \"name\": \"${workflow_id}-creds\"}}]" "${sonataflow_cr}"
-        kubectl create secret generic "${workflow_id}-creds" \
-            --from-env-file=secret.properties \
-            --dry-run=client \
-            -o=yaml > "manifests/00-secret_${workflow_id}.yaml"
+        create_secret_args=(
+            --from-env-file="$res_dir_path/secret.properties"
+            --dry-run=client
+            -o=yaml
+        )
+        if [[ -z "${args["namespace"]}" ]]; then
+            create_secret_args+=(--namespace="${args["namespace"]}")
+        fi
+        kubectl create secret generic "${workflow_id}-creds" "${create_secret_args[@]}" > "${args["manifests-directory"]}/00-secret_${workflow_id}.yaml"
         log_info "Generated k8s secret for the workflow"
     fi
 
@@ -232,8 +237,8 @@ gen_manifests
 build_image
 
 if [[ -n "${args["deploy"]}" ]]; then
+    log_info "Pushing the workflow image to ${args["image"]%/*}"
     push
-    log_info "Pushed the workflow image to ${args["image"]%/*}"
+    log_info "Applying the generated manifests"
     kubectl apply -f "${args["manifests-directory"]}"
-    log_info "Applied the generated manifests"
 fi
