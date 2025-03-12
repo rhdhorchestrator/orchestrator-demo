@@ -1,0 +1,16 @@
+apiVersion: eventing.knative.dev/v1
+kind: Trigger
+metadata:
+  name: produce-event
+  namespace: sonataflow-infra # Trigger and broker must be on the same namespace
+spec:
+  broker: kafka-broker # update with broker value
+  filter:
+    attributes:
+      type: produce
+  subscriber:
+    ref:
+      apiVersion: v1
+      kind: Service
+      name: cloudevent-listener-svc
+      namespace: sonataflow-infra
