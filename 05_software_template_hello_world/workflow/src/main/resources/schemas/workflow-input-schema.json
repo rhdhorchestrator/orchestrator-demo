@@ -1,0 +1,35 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Workflow input parameters",
+  "type": "object",
+  "properties": {
+    "orgName": {
+      "title": "Organization Name",
+      "type": "string",
+      "description": "GitHub Organization Name"
+    },
+    "repoName": {
+      "title": "Repository Name",
+      "type": "string",
+      "description": "GitHub Repository Name"
+    },
+    "serviceName": {
+      "title": "Service Name",
+      "type": "string",
+      "description": "The Service Name"
+    },
+    "owner": {
+      "title": "Owner",
+      "type": "string",
+      "description": "The owner of the component",
+      "pattern": "^(user|group):[A-Za-z0-9]([-A-Za-z0-9]*[A-Za-z0-9])?/([A-Za-z0-9]([-A-Za-z0-9]*[A-Za-z0-9])?)$",
+      "default": "user:default/guest"
+    }
+  },
+  "required": [
+    "orgName",
+    "repoName",
+    "serviceName",
+    "owner"
+  ]
+}

@@ -1,0 +1,101 @@
+specVersion: "0.8"
+id: software-template-workflow
+version: 0.0.1
+name: A workflow that invokes software templates from Backstage
+description: |
+  A sample workflow to invoke software templates and check their progress
+annotations:
+  - "workflow-type/infrastructure"
+dataInputSchema: schemas/workflow-input-schema.json
+extensions:
+  - extensionid: workflow-output-schema
+    outputSchema: schemas/workflow-output-schema.json
+start: LaunchSoftwareTemplate
+functions:
+  - name: LaunchSoftwareTemplate
+    operation: specs/scaffolder-openapi.yaml#createTask
+  - name: GetSoftwareTemplateTask
+    operation: specs/scaffolder-openapi.yaml#getTaskDetails
+  - name: logInfo
+    type: custom
+    operation: "sysout:INFO"
+  - name: templateSuccessResult
+    type: expression
+    operation: '{
+        "result": {
+          "outputs":[
+          {
+            "key":"Service Component in Catalog",
+            "value": $SECRET.rhdh_url + "/catalog/default/component/" + .serviceName,
+            "format":"link"
+          }
+          ]
+        }
+      }'
+  - name: templateErrorResult
+    type: expression
+    operation: '{
+        "result": {
+          "message": "Launching software template " + $SECRET.software_template_ref + " for service " + .serviceName + " for owner " + .owner + " failed.",
+          "outputs":[]
+        }
+      }'
+states:
+  - name: LaunchSoftwareTemplate
+    type: operation
+    actions:
+      - functionRef:
+          refName: LaunchSoftwareTemplate
+          arguments:
+            templateRef: $SECRET.software_template_ref
+            values:
+              orgName: .orgName
+              repoName: .repoName
+              serviceName: .serviceName
+              owner: .owner
+        actionDataFilter:
+          toStateData: .launchedTemplate
+    transition: GetSoftwareTemplate
+  - name: GetSoftwareTemplate
+    type: operation
+    actions:
+      - functionRef:
+          refName: logInfo
+          arguments:
+            message: '"Sleeping before checking the software template status"'
+        sleep:
+          after: PT5S
+      - functionRef:
+          refName: GetSoftwareTemplateTask
+          arguments:
+            taskId: .launchedTemplate.id
+        actionDataFilter:
+          toStateData: .readTask
+    transition: IsTaskDone
+  - name: IsTaskDone
+    type: switch
+    dataConditions:
+      - condition: (.readTask.status == "processing")
+        transition:
+          nextState: GetSoftwareTemplate
+      - condition: (.readTask.status == "completed")
+        transition:
+          nextState: UpdateSoftwareTemplateTaskCompleted
+      - condition: (.readTask.status == "failed")
+        transition:
+          nextState: UpdateSoftwareTemplateTaskFailed
+    defaultCondition:
+      transition: GetSoftwareTemplate
+  - name: UpdateSoftwareTemplateTaskCompleted
+    type: operation
+    actions:
+      - functionRef:
+          refName: templateSuccessResult
+    end: true
+  - name: UpdateSoftwareTemplateTaskFailed
+    type: operation
+    actions:
+      - name: templateErrorResult
+        functionRef:
+          refName: templateErrorResult
+    end: true
