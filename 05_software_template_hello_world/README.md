@@ -5,7 +5,8 @@ To make things a bit more interesting, the orchestrator workflow will be used to
 To keep the workflow simple, there is no use of the notifications plugins, so all results should be viewed from the Orchestrator plugin.
 
 # Prerequisites
-RHDH 1.5 and Orchestrator 1.5
+* RHDH 1.5 and Orchestrator 1.5
+* Register the software template from ./hello-world-software-template to RHDH
 
 ## Workflow application configuration
 The workflow invokes a software template that will be create a repository in GitHub with sample code.
@@ -112,3 +113,13 @@ After changing the secret, the workflow's pod must be restarted manually to ensu
 oc -n $TARGET_NS scale deploy $WORKFLOW_NAME --replicas=0 && oc -n $TARGET_NS scale deploy $WORKFLOW_NAME --replicas=1
 ```
 
+## Invoke the workflow froma a software template
+Once you've practiced with the workflow and verified how it can be used to launch a software template and act upon its success/failure, you can explore the option of invoking a workflow from a software template.
+
+For that purpose, import the software template from ./run-workflow-software-template/template.yaml into RHDH.
+It takes the same amount of parameters as the workflow.
+
+The software template was genearated by a [workflow-to-template converting template](https://github.com/rhdhorchestrator/workflow-software-templates/blob/v1.5.x/scaffolder-templates/github-workflows/convert-workflow-to-template/template.yaml).
+
+## Demo
+See [recording](https://youtu.be/DxO7Xyl5G-c) of this example.

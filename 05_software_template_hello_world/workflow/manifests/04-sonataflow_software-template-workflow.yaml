@@ -10,11 +10,7 @@ metadata:
   creationTimestamp: null
   labels:
     app: software-template-workflow
-    app.kubernetes.io/component: serverless-workflow
-    app.kubernetes.io/managed-by: sonataflow-operator
-    app.kubernetes.io/name: software-template-workflow
     sonataflow.org/workflow-app: software-template-workflow
-    sonataflow.org/workflow-namespace: ""
   name: software-template-workflow
 spec:
   flow:
@@ -124,24 +120,11 @@ spec:
         type: operation
   podTemplate:
     container:
-      env:
-        - name: SOFTWARE_TEMPLATE_REF
-          valueFrom:
-            secretKeyRef:
-              key: SOFTWARE_TEMPLATE_REF
-              name: software-template-workflow-secrets
-        - name: RHDH_URL
-          valueFrom:
-            secretKeyRef:
-              key: RHDH_URL
-              name: software-template-workflow-secrets
-        - name: SCAFFOLDER_BEARER_TOKEN
-          valueFrom:
-            secretKeyRef:
-              key: SCAFFOLDER_BEARER_TOKEN
-              name: software-template-workflow-secrets
-      image: quay.io/orchestrator/demo-software-template-hello-world:demo
+      image: quay.io/orchestrator/demo-software-template-hello-world:latest
       resources: {}
+      envFrom:
+        - secretRef:
+            name: software-template-workflow-secrets
   resources:
     configMaps:
       - configMap:
