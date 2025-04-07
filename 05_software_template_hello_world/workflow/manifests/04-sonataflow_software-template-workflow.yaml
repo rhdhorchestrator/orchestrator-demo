@@ -1,0 +1,149 @@
+apiVersion: sonataflow.org/v1alpha08
+kind: SonataFlow
+metadata:
+  annotations:
+    sonataflow.org/description: |
+      A sample workflow to invoke software templates and check their progress
+    sonataflow.org/expressionLang: jq
+    sonataflow.org/profile: gitops
+    sonataflow.org/version: 0.0.1
+  creationTimestamp: null
+  labels:
+    app: software-template-workflow
+    sonataflow.org/workflow-app: software-template-workflow
+  name: software-template-workflow
+spec:
+  flow:
+    annotations:
+      - workflow-type/infrastructure
+    dataInputSchema:
+      failOnValidationErrors: true
+      schema: schemas/workflow-input-schema.json
+    functions:
+      - name: LaunchSoftwareTemplate
+        operation: specs/scaffolder-openapi.yaml#createTask
+        type: rest
+      - name: GetSoftwareTemplateTask
+        operation: specs/scaffolder-openapi.yaml#getTaskDetails
+        type: rest
+      - name: logInfo
+        operation: sysout:INFO
+        type: custom
+      - name: templateSuccessResult
+        operation: '{ "result": { "outputs":[ { "key":"Service Component in Catalog", "value": $SECRET.rhdh_url + "/catalog/default/component/" + .serviceName, "format":"link" } ] } }'
+        type: expression
+      - name: templateErrorResult
+        operation: '{ "result": { "message": "Launching software template " + $SECRET.software_template_ref + " for service " + .serviceName + " for owner " + .owner + " failed.", "outputs":[] } }'
+        type: expression
+    start:
+      stateName: LaunchSoftwareTemplate
+    states:
+      - actionMode: sequential
+        actions:
+          - actionDataFilter:
+              toStateData: .launchedTemplate
+              useResults: true
+            functionRef:
+              arguments:
+                templateRef: $SECRET.software_template_ref
+                values:
+                  orgName: .orgName
+                  owner: .owner
+                  repoName: .repoName
+                  serviceName: .serviceName
+              invoke: sync
+              refName: LaunchSoftwareTemplate
+        name: LaunchSoftwareTemplate
+        transition:
+          nextState: GetSoftwareTemplate
+        type: operation
+      - actionMode: sequential
+        actions:
+          - actionDataFilter:
+              useResults: true
+            functionRef:
+              arguments:
+                message: '"Sleeping before checking the software template status"'
+              invoke: sync
+              refName: logInfo
+            sleep:
+              after: PT5S
+          - actionDataFilter:
+              toStateData: .readTask
+              useResults: true
+            functionRef:
+              arguments:
+                taskId: .launchedTemplate.id
+              invoke: sync
+              refName: GetSoftwareTemplateTask
+        name: GetSoftwareTemplate
+        transition:
+          nextState: IsTaskDone
+        type: operation
+      - dataConditions:
+          - condition: (.readTask.status == "processing")
+            transition:
+              nextState: GetSoftwareTemplate
+          - condition: (.readTask.status == "completed")
+            transition:
+              nextState: UpdateSoftwareTemplateTaskCompleted
+          - condition: (.readTask.status == "failed")
+            transition:
+              nextState: UpdateSoftwareTemplateTaskFailed
+        defaultCondition:
+          transition:
+            nextState: GetSoftwareTemplate
+        name: IsTaskDone
+        type: switch
+      - actionMode: sequential
+        actions:
+          - actionDataFilter:
+              useResults: true
+            functionRef:
+              invoke: sync
+              refName: templateSuccessResult
+        end:
+          terminate: true
+        name: UpdateSoftwareTemplateTaskCompleted
+        type: operation
+      - actionMode: sequential
+        actions:
+          - actionDataFilter:
+              useResults: true
+            functionRef:
+              invoke: sync
+              refName: templateErrorResult
+            name: templateErrorResult
+        end:
+          terminate: true
+        name: UpdateSoftwareTemplateTaskFailed
+        type: operation
+  podTemplate:
+    container:
+      image: quay.io/orchestrator/demo-software-template-hello-world:latest
+      resources: {}
+      envFrom:
+        - secretRef:
+            name: software-template-workflow-secrets
+  resources:
+    configMaps:
+      - configMap:
+          name: 01-software-template-workflow-resources-schemas
+        workflowPath: schemas
+      - configMap:
+          name: 02-software-template-workflow-resources-specs
+        workflowPath: specs
+  persistence:
+    postgresql:
+      secretRef:
+        name: sonataflow-psql-postgresql
+        userKey: postgres-username
+        passwordKey: postgres-password
+      serviceRef:
+        name: sonataflow-psql-postgresql
+        port: 5432
+        databaseName: sonataflow
+        databaseSchema: software-template-workflow
+status:
+  address: {}
+  lastTimeRecoverAttempt: null

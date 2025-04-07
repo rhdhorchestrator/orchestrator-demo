@@ -22,7 +22,7 @@ spec:
             valueFrom:
               secretKeyRef:
                 key: OCP_API_SERVER_URL
-                name: create-ocp-project-creds
+                name: create-ocp-project-secrets
         livenessProbe:
           httpGet:
             path: /health        

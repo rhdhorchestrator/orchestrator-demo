@@ -1,0 +1,14 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: ${{values.serviceName}}
+  description: A simple Hello World service
+  annotations:
+    github.com/project-slug: ${{values.orgName}}/${{values.repoName}}
+  tags:
+    - typescript
+    - test
+spec:
+  type: service
+  lifecycle: experimental
+  owner: ${{values.owner}}

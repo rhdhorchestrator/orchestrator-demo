@@ -1,0 +1,86 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: hello-world-template
+  title: Hello World Service
+  description: A simple template to test Backstage Software Templates functionality
+  tags:
+    - recommended
+    - typescript
+    - test
+spec:
+  owner: user:default/guest
+  type: service
+
+  parameters:
+    - title: Provide some simple information
+      required:
+        - orgName
+        - repoName
+        - serviceName
+        - owner
+      properties:
+        orgName:
+          title: GitHub Organizatoin Name
+          type: string
+          description: GitHub organizatoin name for the service
+          ui:autofocus: true
+          ui:options:
+            rows: 1
+
+        repoName:
+          title: GitHub Repository Name
+          type: string
+          description: A new GitHub repository name for the service
+          ui:options:
+            rows: 1
+
+        serviceName:
+          title: Service Name
+          type: string
+          description: Unique name for the service
+          ui:options:
+            rows: 1
+        owner:
+          title: Owner
+          type: string
+          description: Owner of the service
+          default: user:default/guest
+          ui:options:
+            rows: 1
+
+  steps:
+    - id: fetch-base
+      name: Fetch Base
+      action: fetch:template
+      input:
+        url: ./skeleton
+        values:
+          orgName: ${{ parameters.orgName }}
+          repoName: ${{ parameters.repoName }}
+          serviceName: ${{ parameters.serviceName }}
+          owner: ${{ parameters.owner }}
+
+    - id: publish
+      name: Publish
+      action: publish:github
+      input:
+        allowedHosts: ['github.com']
+        description: This is a simple ${{ parameters.serviceName }} service
+        repoUrl: github.com?owner=${{ parameters.orgName }}&repo=${{ parameters.repoName }}
+        repoVisibility: public
+
+    - id: register
+      name: Register
+      action: catalog:register
+      input:
+        repoContentsUrl: ${{ steps.publish.output.repoContentsUrl }}
+        catalogInfoPath: '/catalog-info.yaml'
+
+  output:
+    links:
+      - title: Repository
+        url: ${{ steps.publish.output.remoteUrl }}
+      - title: Open in catalog
+        icon: catalog
+        entityRef: ${{ steps.register.output.entityRef }}

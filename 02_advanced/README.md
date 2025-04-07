@@ -127,7 +127,7 @@ export OCP_API_SERVER_TOKEN=$(oc create token orchestrator-ocp-api)
 Now, patch the Secret with these values:
 
 ```bash
-oc -n $TARGET_NS patch secret "$WORKFLOW_NAME-creds" \
+oc -n $TARGET_NS patch secret "$WORKFLOW_NAME-secrets" \
   --type merge -p "{ \
     \"stringData\": { \
       \"NOTIFICATIONS_BEARER_TOKEN\": \"$NOTIFICATIONS_BEARER_TOKEN\",
@@ -156,7 +156,7 @@ By defualt,the generated `Sonataflow` resource will load and set the environment
     container:
       envFrom:
         - secretRef:
-            name: create-ocp-project-creds
+            name: create-ocp-project-secrets
 ```
 
 In our case, we need to make sure the `OCP_API_SERVER_URL` points directly to the  `proxy-service` and not to the real `OCP_API_SERVER_URL` due to the certificates issue; the Sonataflow CR for the workflow must be updated

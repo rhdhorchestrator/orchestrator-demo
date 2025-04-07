@@ -15,7 +15,7 @@ source "${script_dir_path}/lib/_functions.sh"
 function usage {
     cat <<EOF
 This script performs the following tasks in this specific order:
-1. Generates a list of Operator manifests for a SonataFlow project using the kn-workflow plugin (requires at least v1.35.0)
+1. Generates a list of Operator manifests for a SonataFlow project using the kn-workflow plugin (requires exactly v1.35.0)
 2. Builds the workflow image using podman or docker
 3. Optionally, deploys the application:
     - Pushes the workflow image to the container registry specified by the image path
@@ -73,7 +73,7 @@ function parse_args {
                         assert_optarg_not_empty "$OPTARG" || exit $?
                         args["image"]="${OPTARG#*=}"
                     ;;
-                    namepsace=*)
+                    namespace=*)
                         assert_optarg_not_empty "$OPTARG" || exit $?
                         args["namepsace"]="${OPTARG#*=}"
                     ;;
@@ -134,7 +134,7 @@ function gen_manifests {
     sonataflow_cr="$(findw "${args["manifests-directory"]}" -type f -name "*-sonataflow_${workflow_id}.yaml")"
 
     if [[ -f "${res_dir_path}/secret.properties" ]]; then
-        yq --inplace ".spec.podTemplate.container.envFrom=[{\"secretRef\": { \"name\": \"${workflow_id}-creds\"}}]" "${sonataflow_cr}"
+        yq --inplace ".spec.podTemplate.container.envFrom=[{\"secretRef\": { \"name\": \"${workflow_id}-secrets\"}}]" "${sonataflow_cr}"
         create_secret_args=(
             --from-env-file="$res_dir_path/secret.properties"
             --dry-run=client
@@ -143,9 +143,9 @@ function gen_manifests {
         if [[ -z "${args["namespace"]}" ]]; then
             create_secret_args+=(--namespace="${args["namespace"]}")
         fi
-        kubectl create secret generic "${workflow_id}-creds" "${create_secret_args[@]}" > "${args["manifests-directory"]}/00-secret_${workflow_id}.yaml"
+        kubectl create secret generic "${workflow_id}-secrets" "${create_secret_args[@]}" > "${args["manifests-directory"]}/00-secret_${workflow_id}-secrets.yaml"
         log_info "Generated k8s secret for the workflow"
-    fi
+     fi
 
     if [[ -z "${args["no-persistence"]:-}" ]]; then
         yq --inplace ".spec |= (
