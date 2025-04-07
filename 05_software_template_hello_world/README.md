@@ -113,7 +113,7 @@ After changing the secret, the workflow's pod must be restarted manually to ensu
 oc -n $TARGET_NS scale deploy $WORKFLOW_NAME --replicas=0 && oc -n $TARGET_NS scale deploy $WORKFLOW_NAME --replicas=1
 ```
 
-## Invoke the workflow froma a software template
+## Invoke the workflow from software template
 Once you've practiced with the workflow and verified how it can be used to launch a software template and act upon its success/failure, you can explore the option of invoking a workflow from a software template.
 
 For that purpose, import the software template from ./run-workflow-software-template/template.yaml into RHDH.
