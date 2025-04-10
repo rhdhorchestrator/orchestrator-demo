@@ -122,4 +122,4 @@ It takes the same amount of parameters as the workflow.
 The software template was genearated by a [workflow-to-template converting template](https://github.com/rhdhorchestrator/workflow-software-templates/blob/v1.5.x/scaffolder-templates/github-workflows/convert-workflow-to-template/template.yaml).
 
 ## Demo
-See [recording](https://youtu.be/DxO7Xyl5G-c) of this example.
+See [recording](https://youtu.be/pP9dhnstO6Q) of this example.
