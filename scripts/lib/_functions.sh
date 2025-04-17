@@ -35,7 +35,7 @@ function get_workflow_id {
 }
 
 function pocker {
-    $(command -v podman || command -v docker) "$@"
+    $(command -v docker || command -v podman ) "$@"
 }
 
 function assert_optarg_not_empty {
