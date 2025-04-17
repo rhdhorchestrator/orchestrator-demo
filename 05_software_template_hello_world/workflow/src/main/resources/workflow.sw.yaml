@@ -111,33 +111,33 @@ states:
         actionDataFilter:
           toStateData: .taskEvents
     transition: UpdateSoftwareTemplateTaskFailed
-  - name: UpdateSoftwareTemplateTaskFailed
-    type: operation
-    metadata:
-      errorMessage: '"Failed to launch the software template \"" + $SECRET.software_template_ref + "\" to create the service \"" + .serviceName + "\" for owner \"" + .owner + "\".\n\n" +
-        (
-          [.taskEvents[] 
-            | select(.body.error.message != null and .body.error.message != "") 
-            | .body.error.message
-          ] 
-          | if length > 0 then 
-              "Error details:\n" + join("\n") 
-            else 
-              "" 
-          end
-        )'
-    actions:
-      - functionRef:
-          refName: logInfo
-          arguments:
-            message: '"Failed to laucnh software template. See software template event messages: " + ([.taskEvents[] | select(.body.error.message != null and .body.error.message != "") | .body.error.message] | join("\n"))'
-    end: true
-
-# Uncomment the following lines to enable error handling for failed tasks and comment out the above
   # - name: UpdateSoftwareTemplateTaskFailed
   #   type: operation
+  #   metadata:
+  #     errorMessage: '"Failed to launch the software template \"" + $SECRET.software_template_ref + "\" to create the service \"" + .serviceName + "\" for owner \"" + .owner + "\".\n\n" +
+  #       (
+  #         [.taskEvents[] 
+  #           | select(.body.error.message != null and .body.error.message != "") 
+  #           | .body.error.message
+  #         ] 
+  #         | if length > 0 then 
+  #             "Error details:\n" + join("\n") 
+  #           else 
+  #             "" 
+  #         end
+  #       )'
   #   actions:
-  #     - name: templateErrorResult
-  #       functionRef:
-  #         refName: templateErrorResult
+  #     - functionRef:
+  #         refName: logInfo
+  #         arguments:
+  #           message: '"Failed to laucnh software template. See software template event messages: " + ([.taskEvents[] | select(.body.error.message != null and .body.error.message != "") | .body.error.message] | join("\n"))'
   #   end: true
+
+#Uncomment the following lines to enable error handling for failed tasks and comment out the above
+  - name: UpdateSoftwareTemplateTaskFailed
+    type: operation
+    actions:
+      - name: templateErrorResult
+        functionRef:
+          refName: templateErrorResult
+    end: true
