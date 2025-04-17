@@ -5,13 +5,13 @@ This repository contains the source code of workflows we use for demo.
 It also contains scripts used to build and push the image of the workflow and to generate the associated manifests in order to deploy the workflows in an OCP cluster.
 
 ## Pre-requisites
-* Having `kn-workflow` **v1.34** installed: see https://docs.openshift.com/serverless/1.34/serverless-logic/serverless-logic-getting-started/serverless-logic-creating-managing-workflows.html
-  * You can find the binary here: https://mirror.openshift.com/pub/cgw/serverless-logic/1.34.0/
+* Having `kn-workflow` **v1.35** installed: see https://docs.openshift.com/serverless/1.35/serverless-logic/serverless-logic-getting-started/serverless-logic-creating-managing-workflows.html
+  * You can find the binary here: https://mirror.openshift.com/pub/cgw/serverless-logic/1.35.0/
 * Having an OCP cluster  with 
-  * Red Hat Developer Hub (RHDH) v1.3 
+  * Red Hat Developer Hub (RHDH) v1.4 or v1.5 
     * Notification plugin 
-    * Orchestrator plugin v1.3: https://github.com/rhdhorchestrator/orchestrator-helm-operator/tree/main/docs/release-1.3
-  * OpenShift Serverless (OSL) v1.34
+    * Orchestrator plugin [v1.4](https://www.rhdhorchestrator.io/1.4/docs/) or [v1.5](https://www.rhdhorchestrator.io/1.5/docs/)
+  * OpenShift Serverless (OSL) v1.35
 
 ## Repository structure
 * Folders starting with `0*_` are the folders containing the workflow projects in Quarkus layout

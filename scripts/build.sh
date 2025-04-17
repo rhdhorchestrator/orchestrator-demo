@@ -25,13 +25,14 @@ Usage:
     $script_name [flags]
 
 Flags:
-    -i|--image=<string> (required)       The full container image path to use for the workflow, e.g: quay.io/orchestrator/demo.
+    -i|--image=<string> (required)       The full container image path to use for the workflow, e.g: quay.io/orchestrator/demo:latest.
     -b|--builder-image=<string>          Overrides the image to use for building the workflow image.
     -r|--runtime-image=<string>          Overrides the image to use for running the workflow.
     -n|--namespace=<string>              The target namespace where the manifests will be applied. Default: current namespace.
     -m|--manifests-directory=<string>    The operator manifests will be generated inside the specified directory. Default: 'manifests' directory in the current directory.
     -w|--workflow-directory=<string>     Path to the directory containing the workflow's files (the 'src' directory). Default: current directory.
     -P|--no-persistence                  Skips adding persistence configuration to the sonataflow CR.
+       --push                            Pushes the workflow image to the container registry.
        --deploy                          Deploys the application.
     -h|--help                            Prints this help message.
 
@@ -43,6 +44,7 @@ EOF
 declare -A args
 args["image"]=""
 args["deploy"]=""
+args["push"]=""
 args["namespace"]=""
 args["builder-image"]=""
 args["runtime-image"]=""
@@ -66,7 +68,11 @@ function parse_args {
                     help)
                         usage; exit ;;
                     deploy)
-                        args["deploy"]="YES" ;;
+                        args["deploy"]="YES"
+                        args["push"]="YES"
+                    ;;
+                    push)
+                        args["push"]="YES" ;;
                     no-persistence)
                         args["no-persistence"]="YES" ;;
                     image=*)
@@ -211,7 +217,14 @@ function build_image {
     [[ -n "${args["runtime-image"]:-}" ]] && pocker_args+=(--build-arg="RUNTIME_IMAGE=${args["runtime-image"]}")
 
     pocker build "${pocker_args[@]}" "${args["workflow-directory"]}"
-    pocker tag "${args["image"]}" "$image_name:$(git rev-parse --short=8 HEAD)"
+
+    if ! git rev-parse --short=8 HEAD >/dev/null 2>&1; then
+        log_warning "Failed to get the git commit hash, skipping tagging with commit hash"
+    else
+        local commit_hash=$(git rev-parse --short=8 HEAD)
+        pocker tag "${args["image"]}" "$image_name:$commit_hash"
+    fi
+
     if [[ "$tag" != "latest" ]]; then
         pocker tag "${args["image"]}" "$image_name:latest"
     fi
@@ -225,7 +238,14 @@ function push {
     local tag="${args["image"]#*:}"
 
     pocker push "${args["image"]}"
-    pocker push "$image_name:$(git rev-parse --short=8 HEAD)"
+
+    if ! git rev-parse --short=8 HEAD >/dev/null 2>&1; then
+        log_warning "Failed to get the git commit hash, skipping image push with commit hash as tag"
+    else
+        local commit_hash=$(git rev-parse --short=8 HEAD)
+        pocker push "$image_name:$commit_hash"
+    fi
+
     if [[ "$tag" != "latest" ]]; then
         pocker push "$image_name:latest"
     fi
@@ -236,9 +256,12 @@ parse_args "$@"
 gen_manifests
 build_image
 
-if [[ -n "${args["deploy"]}" ]]; then
+if [[ -n "${args["push"]}" ]]; then
     log_info "Pushing the workflow image to ${args["image"]%/*}"
     push
+fi
+
+if [[ -n "${args["deploy"]}" ]]; then
     log_info "Applying the generated manifests"
     kubectl apply -f "${args["manifests-directory"]}"
 fi
