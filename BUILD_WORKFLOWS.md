@@ -45,18 +45,56 @@ Usage:
 
 Here’s a typical command used to build and optionally push the workflow image:
 
+### Running with podman:
 ```bash
+TARGET_WORKFLOW_IMAGE= # .e.g quay.io/your-org/workflow-repo-name:<tag>
 podman run --rm \
-  --network=host \
   --privileged \
   -v $HOME/.config/containers/auth.json:/root/.config/containers/auth.json:ro \
+  -v $HOME/.docker/config.json:/root/.docker/config.json:ro \
   -v $(pwd)/05_software_template_hello_world/workflow:/workspace \
   quay.io/orchestrator/orchestrator-workflow-builder:1.35 \
-  -i quay.io/masayag/builder-test:test \
+  -i $TARGET_WORKFLOW_IMAGE \
   -w /workspace \
   -m /workspace/manifests \
   --push
 ```
+
+On MacOS, it may be needed adding `--network=host` if the container fails to pull Maven dependencies.
+
+### Running with docker:
+```bash
+TARGET_WORKFLOW_IMAGE= # .e.g quay.io/your-org/workflow-repo-name:<tag>
+docker run --rm \
+  --privileged \
+  -v $HOME/.docker/config.json:/root/.docker/config.json:ro \
+  -v $(pwd)/05_software_template_hello_world/workflow:/workspace \
+  quay.io/orchestrator/orchestrator-workflow-builder:1.35 \
+  -i $TARGET_WORKFLOW_IMAGE \
+  -w /workspace \
+  -m /workspace/manifests \
+  --push
+```
+
+### Running with additional Quarkus extensions or Maven arguments
+When there is a need to include additional Quarkus extensions, there is a need to specify them via `QUARKUS_EXTENSIONS` variable.
+For adding specific Maven arguments, provide them via `MAVEN_ARGS_APPEND` variable.
+```bash
+TARGET_WORKFLOW_IMAGE= # .e.g quay.io/your-org/workflow-repo-name:<tag>
+podman run --rm \
+  --privileged \
+  --network=host \
+  --env QUARKUS_EXTENSIONS="io.quarkus:quarkus-smallrye-reactive-messaging-kafka" \
+  -v $HOME/.config/containers/auth.json:/root/.config/containers/auth.json:ro \
+  -v $HOME/.docker/config.json:/root/.docker/config.json:ro \
+  -v $(pwd)/05_software_template_hello_world/workflow:/workspace \
+  quay.io/orchestrator/orchestrator-workflow-builder:1.35 \
+  -i $TARGET_WORKFLOW_IMAGE \
+  -w /workspace \
+  -m /workspace/manifests \
+  --push
+```
+
 
 ### 🔍 Explanation of Each Part:
 

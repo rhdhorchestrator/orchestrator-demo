@@ -219,7 +219,7 @@ function build_image {
     pocker build "${pocker_args[@]}" "${args["workflow-directory"]}"
 
     if ! git rev-parse --short=8 HEAD >/dev/null 2>&1; then
-        log_warning "Failed to get the git commit hash, skipping tagging with commit hash"
+        log_info "Failed to get the git commit hash, skipping tagging with commit hash"
     else
         local commit_hash=$(git rev-parse --short=8 HEAD)
         pocker tag "${args["image"]}" "$image_name:$commit_hash"
@@ -240,7 +240,7 @@ function push {
     pocker push "${args["image"]}"
 
     if ! git rev-parse --short=8 HEAD >/dev/null 2>&1; then
-        log_warning "Failed to get the git commit hash, skipping image push with commit hash as tag"
+        log_info "Failed to get the git commit hash, skipping image push with commit hash as tag"
     else
         local commit_hash=$(git rev-parse --short=8 HEAD)
         pocker push "$image_name:$commit_hash"
