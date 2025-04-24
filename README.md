@@ -45,7 +45,7 @@ registry.access.redhat.com/ubi9/openjdk-17:1.21-2
 
 ## References
 
-* How to deploy workflow in another namespace: https://github.com/rhdhorchestrator/orchestrator-helm-operator/tree/main/docs/release-1.3#additional-workflow-namespaces
+* How to deploy workflow in another namespace: https://github.com/rhdhorchestrator/orchestrator-go-operator/tree/main/docs/release-1.5#additional-workflow-namespaces
 * Developing workflow tutorials: https://redhat-scholars.github.io/serverless-workflow/osl/index.html
 * OpenShift Serverless Logic: https://openshift-knative.github.io/docs/docs/latest/serverless-logic/about.html
 * Using Quarkus: https://docs.redhat.com/en/documentation/red_hat_build_of_quarkus/3.15/html/getting_started_with_red_hat_build_of_quarkus/assembly_quarkus-getting-started_quarkus-getting-started#proc_online-maven_quarkus-getting-started
