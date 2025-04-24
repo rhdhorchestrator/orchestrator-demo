@@ -81,7 +81,7 @@ function parse_args {
                     ;;
                     namespace=*)
                         assert_optarg_not_empty "$OPTARG" || exit $?
-                        args["namepsace"]="${OPTARG#*=}"
+                        args["namespace"]="${OPTARG#*=}"
                     ;;
                     manifests-directory=*)
                         assert_optarg_not_empty "$OPTARG" || exit $?
