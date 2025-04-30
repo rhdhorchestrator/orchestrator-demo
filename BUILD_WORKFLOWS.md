@@ -138,5 +138,5 @@ To deploy to a specific namespace, either:
 
 - You must be logged in to your image registry from the running machine and have a valid `auth.json` file.
 - Your workflow directory should follow the expected structure, aka quarkus layout (`src/main/resources/`, etc.).
-- To **only generate manifests**, omit the `--push` and `--deploy` flags.
+- To **only generate manifests and build workflow image**, omit the `--push` and `--deploy` flags.
 - Use `--deploy` to apply the manifests to your current `kubectl` context.
