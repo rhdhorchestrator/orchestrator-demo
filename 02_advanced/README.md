@@ -29,8 +29,8 @@ Application properties can be initialized from environment variables before runn
 
 
 ## Input
-- `Audit Jira Project Key` [required] - the Jira Project Key to which the workflow is configured to work and has permission to create and update and issue of type Task. This parameter is used to specify the Jira project for auditing the actions. It has no impact on the flow of the workflow.
-- `Operations Jira Project Key` [required] - the Jira Project Key to which the workflow is configured to work and has permission to create and update and issue of type Task. This parameter is used to specify the Jira project for approving the request of creating a new project in OpenShift. It is required to approve or deny the request for the workflow to continue.
+- `Audit Jira Project Key` [required] - the Jira Project Key to which the workflow is configured to work and has permission to create and update and issue of type Task. This parameter is used to specify the Jira project for auditing the actions. It has no direct implication on the flow of the workflow; it is used to track the requests from the workflow. It must be created in Jira prior to the workflow's execution.
+- `Operations Jira Project Key` [required] - the Jira Project Key to which the workflow is configured to work and has permission to create and update and issue of type Task. This parameter is used to specify the Jira project for approving the request of creating a new project in OpenShift. It is required to approve or deny the request for the workflow to continue. It must be created in Jira prior to the workflow's execution.
 - `OCP project to create` [required] - the OCP project to be created on the OCP cluster.
 - `Recipients` - the recipients of the notifications, automatically populated thanks to the custom UI plugin.
 
