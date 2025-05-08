@@ -13,6 +13,8 @@ It also contains scripts used to build and push the image of the workflow and to
     * Orchestrator plugin [v1.4](https://www.rhdhorchestrator.io/1.4/docs/) or [v1.5](https://www.rhdhorchestrator.io/1.5/docs/)
   * OpenShift Serverless (OSL) v1.35
 
+> **Notice**: The content of this repository was tested on Fedora/RHEL. Building images on MacOS with podman fails, but can be completed with docker.
+
 ## Repository structure
 * Folders starting with `0*_` are the folders containing the workflow projects in Quarkus layout
 * The `resources` folder contains 
