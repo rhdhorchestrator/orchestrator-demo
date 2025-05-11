@@ -12,6 +12,11 @@ ENV QUARKUS_EXTENSIONS=${QUARKUS_EXTENSIONS}
 ARG MAVEN_ARGS_APPEND
 ENV MAVEN_ARGS_APPEND=${MAVEN_ARGS_APPEND}
 
+# Create the Quarkus config directory and add the config.yaml file
+RUN mkdir -p /home/kogito/.quarkus && \
+    printf "registries:\n  - registry.quarkus.redhat.com\n" > $HOME/.quarkus/config.yaml && \
+    chown -R 1001:0 /home/kogito/.quarkus
+
 COPY --chown=1001 . .
 
 RUN /home/kogito/launch/build-app.sh
