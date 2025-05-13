@@ -1,0 +1,7 @@
+registries:
+  - registry.quarkus.io:
+      update-policy: "never"
+      enabled: "false"
+  - registry.quarkus.redhat.com:
+      update-policy: "never"
+      enabled: "false"
