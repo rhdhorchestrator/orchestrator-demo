@@ -1,0 +1,8 @@
+# Add this configuration to the appConfig of your backstage deployment
+      proxy:
+        reviveConsumedRequestBodies: true
+        endpoints:
+          '/mytesthttpserver':
+            target: 'http://mytesthttpservice:80'
+            allowedMethods: ['GET', 'POST']
+            allowedHeaders: ['test-header']
