@@ -2,4 +2,4 @@ service:
   port: 80
   targetPort: 8080
 server:
-  image: quay.io/example # CHANGE ME
+  image: quay.io/orchestrator/dynamic-course-demo:latest
