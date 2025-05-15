@@ -11,6 +11,7 @@ spec:
   containers:
     - name: myhttpserver
       image: {{ .Values.server.image }}
+      imagePullPolicy: Always
       securityContext:
         allowPrivilegeEscalation: false
         capabilities:
