@@ -2,7 +2,7 @@ service:
   port: 80
   targetPort: 8080
 server:
-  image: quay.io/orchestrator/dynamic-course-demo:latest
+  image: quay.io/orchestrator/dynamic-course-demo-server:latest
 postgresql:
   secretRef:
     name: rhdh-postgresql-svcbind-postgres
