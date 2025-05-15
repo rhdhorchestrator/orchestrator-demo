@@ -50,3 +50,4 @@ kind: ConfigMap
 metadata:
   creationTimestamp: null
   name: 01-dynamic-course-select-resources-schemas
+  namespace: {{ .Release.Namespace }}

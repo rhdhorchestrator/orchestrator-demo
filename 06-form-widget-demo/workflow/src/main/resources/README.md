@@ -1,2 +1,0 @@
-# Dynamic Course Workflow
-TBA

@@ -11,6 +11,7 @@ metadata:
     app: dynamic-course-select
     sonataflow.org/workflow-app: dynamic-course-select
   name: dynamic-course-select
+  namespace: {{ .Release.Namespace }}
 spec:
   flow:
     dataInputSchema:
