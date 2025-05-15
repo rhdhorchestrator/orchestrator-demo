@@ -4,4 +4,11 @@ service:
 server:
   image: quay.io/orchestrator/dynamic-course-demo:latest
 postgresql:
-  
+  secretRef:
+    name: rhdh-postgresql-svcbind-postgres
+    userKey: username
+    passwordKey: password
+  serviceRef:
+    name: rhdh-postgresql
+    port: 5432
+    databaseName: sonataflow
