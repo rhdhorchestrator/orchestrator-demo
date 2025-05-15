@@ -36,9 +36,10 @@ See [demo recording](https://www.youtube.com/watch?v=ApDemFgkjqo).
    - PetClinic software template imported from [spring-petclinic-software-template folder](./spring-petclinic-software-template).
 
 3. **OpenShift GitOps/ArgoCD**
-4. **Image Registry**:  
+   - see [how we do it](https://github.com/rhdhorchestrator/orchestrator-go-operator/tree/main/docs/gitops#install-openshift-gitops-operator-1)
+5. **Image Registry**:  
    - Quay.io (default) with a target repository created.
-5. **AAP** with [Ansible playbook](./postgres_playbook/blob/main/psql.yaml) imported (details below)
+6. **AAP** with [Ansible playbook](./postgres_playbook/blob/main/psql.yaml) imported (details below)
 
 ---
 
