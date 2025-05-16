@@ -39,7 +39,7 @@ See [demo recording](https://www.youtube.com/watch?v=ApDemFgkjqo).
    - see [how we do it](https://github.com/rhdhorchestrator/orchestrator-go-operator/tree/main/docs/gitops#install-openshift-gitops-operator-1)
 5. **Image Registry**:  
    - Quay.io (default) with a target repository created.
-6. **AAP** with [Ansible playbook](./postgres_playbook/blob/main/psql.yaml) imported (details below)
+6. **AAP** with [Ansible playbook](./postgres_playbook/psql.yaml) imported (details below)
 
 ---
 
