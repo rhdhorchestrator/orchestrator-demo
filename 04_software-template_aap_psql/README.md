@@ -122,7 +122,7 @@ aap-db-deploy-68ff48fdb6-7wcrc         1/1     Running   0          10m
 ---
 
 ## Setting up AAP (Ansible Automation Platform)
-1. Create a job template in AAP using this [Ansible playbook](./postgres_playbook/blob/main/psql.yaml). This playbook deploys PostgreSQL on the same OCP cluster where RHDH and the Orchestrator are installed.
+1. Create a job template in AAP using this [Ansible playbook](./postgres_playbook/psql.yaml). This playbook deploys PostgreSQL on the same OCP cluster where RHDH and the Orchestrator are installed.
 1. Configure OCP/K8s credentials in AAP for applying manifests. Follow the [Red Hat Developer Guide](https://developers.redhat.com/articles/2023/06/26/how-deploy-apps-k8s-cluster-automation-controller#install_and_configure_ansible_automation_platform) for details. Create a service account (SA) and assign it appropriate permissions:
     ```bash
     oc create sa orchestrator-ocp-api
