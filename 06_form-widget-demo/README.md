@@ -74,3 +74,14 @@ Run the following command to install the chart:
 `helm install <release-name> dynamic-course-setup`
 
 After installing the Helm Chart, a new workflow should be avaliable in the Orchestrator plugin.
+
+## Updating the http server used by the workflow
+
+To modify the http server that is used by the workflow in the demo, you can do so by building the container image from the project [here](https://github.com/redhat-developer/rhdh-plugins/tree/main/workspaces/orchestrator/plugins/orchestrator-form-widgets/http-workflow-dev-server). 
+
+Run the following commands: 
+```
+yarn install 
+podman build -t <container-image-name>:<tag>
+podman push <container-image-name>:<tag>
+```
