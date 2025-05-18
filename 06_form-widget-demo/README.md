@@ -1,4 +1,4 @@
-# Form widget Demo
+# Form Widget Demo
 
 This directory contains the necessary resources to run the Form Widget Demo. This will demonstrate a new forntend plugin that will be provided to enhance the Orchestrator experience.
 
@@ -66,6 +66,9 @@ proxy:
       allowedMethods: ['GET', 'POST']
       allowedHeaders: ['test-header']
 ```
+
+> [!NOTE]
+> The application properties that are passed to the workflow in [this config map](/06_form-widget-demo/dynamic-course-setup/templates/01-configmap_dynamic-course-select-props.yaml) are referencing the ones already passed n the build stage. To apply changes, please rebuild the workflow image with the steps provided.
 
 Run the following command to install the chart:
 `helm install <release-name> dynamic-course-setup`
