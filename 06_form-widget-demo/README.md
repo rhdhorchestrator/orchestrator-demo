@@ -33,6 +33,7 @@ This JSON Schema defines a dynamic form for selecting courses based on a student
 
 Used to demonstrate dynamic form behavior with schema-driven UI components, including fetch triggers, POST requests, and conditional rendering.
 
+---
 
 ## Installing the Dynamic Course Demo via Helm Chart
 
@@ -75,6 +76,8 @@ Run the following command to install the chart:
 
 After installing the Helm Chart, a new workflow should be avaliable in the Orchestrator plugin.
 
+---
+
 ## Updating the http server used by the workflow
 
 To modify the http server that is used by the workflow in the demo, you can do so by building the container image from the project [here](http-workflow-dev-server).
@@ -86,7 +89,9 @@ podman build -t <container-image-name>:<tag> http-workflow-dev-server
 podman push <container-image-name>:<tag>
 ```
 
-# Recording
+---
+
+## Recording
 The workflow is demonstrated on top of a development environment:
 
 https://github.com/user-attachments/assets/2f37191d-c1f2-43df-a65f-0aa95f2e0eec
