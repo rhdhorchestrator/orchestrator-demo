@@ -56,7 +56,7 @@ The following chart will deploy:
 
 ### Additional setup
 
-You must add proxy configurations to the RHDH appConfig settings:
+You must add [proxy configurations](https://backstage.io/docs/plugins/proxying) to the RHDH appConfig settings:
 
 ```yaml
 proxy:
