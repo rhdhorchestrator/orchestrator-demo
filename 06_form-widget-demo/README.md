@@ -85,3 +85,8 @@ yarn install
 podman build -t <container-image-name>:<tag> http-workflow-dev-server
 podman push <container-image-name>:<tag>
 ```
+
+# Recording
+The workflow is demonstrated on top of a development environment:
+
+https://github.com/user-attachments/assets/2f37191d-c1f2-43df-a65f-0aa95f2e0eec
