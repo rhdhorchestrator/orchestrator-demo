@@ -3,9 +3,9 @@ kind: Pod
 metadata:
   name: mytesthttpserver
   namespace: {{ .Release.Namespace }}
-spec:
-  selector:
+  labels:
     app: mytesthttpserver
+spec:
   securityContext:
     runAsNonRoot: true
     seccompProfile:
