@@ -1,6 +1,6 @@
 service:
   port: 80
-  targetPort: 8080
+  targetPort: 12345
 server:
   image: quay.io/orchestrator/dynamic-course-demo-server:latest
 postgresql:
