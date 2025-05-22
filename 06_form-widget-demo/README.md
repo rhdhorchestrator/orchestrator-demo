@@ -71,12 +71,14 @@ proxy:
 > [!NOTE]
 > The application properties that are passed to the workflow in [this config map](/06_form-widget-demo/dynamic-course-setup/templates/01-configmap_dynamic-course-select-props.yaml) are referencing the ones already passed n the build stage. To apply changes, please rebuild the workflow image with the steps provided.
 
+> Verify the PostgreSQL secret and service are set correctly in [values.yaml](./dynamic-course-setup/values.yaml) before running the command.
+
 Run the following command to install the chart:
 ```bash
 helm install <release-name> dynamic-course-setup
 ```
 
-After installing the Helm Chart, a new workflow should be avaliable in the Orchestrator plugin.
+After installing the Helm Chart, a new workflow should be available in the Orchestrator plugin.
 
 ---
 
