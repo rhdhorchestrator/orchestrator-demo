@@ -1,19 +1,19 @@
-FROM registry.redhat.io/openshift-serverless-1/logic-swf-builder-rhel8:1.35.0-6
+FROM registry-proxy.engineering.redhat.com/rh-osbs/openshift-serverless-1-logic-swf-builder-rhel8@sha256:b78236e94d942f383b51f3e4c59a127f1daa1bd6b41ab0ff0af31d19d9b02ff8
 
 ENV QUARKUS_PLATFORM_GROUPID=com.redhat.quarkus.platform
-ENV QUARKUS_PLATFORM_VERSION=3.8.6.SP2-redhat-00002
+ENV QUARKUS_PLATFORM_VERSION=3.15.4.redhat-00001
 
 # Additional Java/Maven arguments to pass to the builder
 ARG MAVEN_ARGS_APPEND
 ENV MAVEN_ARGS_APPEND=${MAVEN_ARGS_APPEND}
 
 # Create the .quarkus directory and set correct ownership
-RUN mkdir -p /home/kogito/.quarkus
+# RUN mkdir -p /home/kogito/.quarkus
 
 # Copy config.yaml to the .quarkus directory
-COPY --chown=1001 ./config.yaml /home/kogito/.quarkus/config.yaml
+# COPY --chown=1001 ./config.yaml /home/kogito/.quarkus/config.yaml
 
-RUN chown -R 1001:0 /home/kogito/.quarkus
+# RUN chown -R 1001:0 /home/kogito/.quarkus
 
 COPY --chown=1001 ./pom.xml /home/kogito/serverless-workflow-project/pom.xml
 #RUN chown 1001:0 /home/kogito/serverless-workflow-project/pom.xml
