@@ -12,7 +12,8 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <quarkus.platform.artifact-id>quarkus-bom</quarkus.platform.artifact-id>
         <quarkus.platform.group-id>com.redhat.quarkus.platform</quarkus.platform.group-id>
-        <quarkus.platform.version>3.8.6.SP2-redhat-00002</quarkus.platform.version>
+        <quarkus.platform.version>3.15.4.redhat-00001</quarkus.platform.version>
+        <org.kie.version>9.103.0.redhat-00004</org.kie.version>
         <skipITs>true</skipITs>
     <surefire-plugin.version>3.1.2</surefire-plugin.version>
     </properties>
@@ -31,19 +32,24 @@
 
     <dependencies>
         <dependency>
+            <groupId>io.quarkiverse.openapi.generator</groupId>
+            <artifactId>quarkus-openapi-generator</artifactId>
+            <version>2.9.1-lts</version>
+        </dependency>
+        <dependency>
             <groupId>org.kie</groupId>
             <artifactId>kie-addons-quarkus-persistence-jdbc</artifactId>
-            <version>9.102.0.redhat-00005</version>
+            <version>${org.kie.version}</version>
         </dependency>
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-jdbc-postgresql</artifactId>
-            <version>3.8.6.redhat-00004</version>
+            <version>${quarkus.platform.version}</version>
         </dependency>
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-agroal</artifactId>
-            <version>3.8.6.redhat-00004</version>
+            <version>${quarkus.platform.version}</version>
         </dependency>
         <dependency>
             <groupId>io.quarkus</groupId>
@@ -56,12 +62,12 @@
         <dependency>
             <groupId>org.kie</groupId>
             <artifactId>kogito-addons-quarkus-knative-serving</artifactId>
-            <version>9.102.0.redhat-00005</version>
+            <version>${org.kie.version}</version>
         </dependency>
         <dependency>
             <groupId>org.kie</groupId>
             <artifactId>kogito-addons-quarkus-jobs-knative-eventing</artifactId>
-            <version>9.102.0.redhat-00005</version>
+            <version>${org.kie.version}</version>
         </dependency>
         <dependency>
             <groupId>com.aayushatharva.brotli4j</groupId>
@@ -71,7 +77,7 @@
         <dependency>
             <groupId>org.kie</groupId>
             <artifactId>kie-addons-quarkus-monitoring-prometheus</artifactId>
-            <version>9.102.0.redhat-00005</version>
+            <version>${org.kie.version}</version>
         </dependency>
         <dependency>
             <groupId>io.quarkus</groupId>
@@ -80,42 +86,42 @@
         <dependency>
             <groupId>org.apache.kie.sonataflow</groupId>
             <artifactId>sonataflow-quarkus</artifactId>
-            <version>9.102.0.redhat-00005</version>
+            <version>${org.kie.version}</version>
         </dependency>
         <dependency>
             <groupId>org.kie</groupId>
             <artifactId>kie-addons-quarkus-events-process</artifactId>
-            <version>9.102.0.redhat-00005</version>
+            <version>${org.kie.version}</version>
         </dependency>
         <dependency>
             <groupId>org.kie</groupId>
             <artifactId>kie-addons-quarkus-process-management</artifactId>
-            <version>9.102.0.redhat-00005</version>
+            <version>${org.kie.version}</version>
         </dependency>
         <dependency>
             <groupId>org.kie</groupId>
             <artifactId>kie-addons-quarkus-kubernetes</artifactId>
-            <version>9.102.0.redhat-00005</version>
+            <version>${org.kie.version}</version>
         </dependency>
         <dependency>
             <groupId>org.kie</groupId>
             <artifactId>kie-addons-quarkus-knative-eventing</artifactId>
-            <version>9.102.0.redhat-00005</version>
+            <version>${org.kie.version}</version>
         </dependency>
         <dependency>
             <groupId>org.kie</groupId>
             <artifactId>kie-addons-quarkus-monitoring-sonataflow</artifactId>
-            <version>9.102.0.redhat-00005</version>
+            <version>${org.kie.version}</version>
         </dependency>
         <dependency>
             <groupId>org.kie</groupId>
             <artifactId>kie-addons-quarkus-source-files</artifactId>
-            <version>9.102.0.redhat-00005</version>
+            <version>${org.kie.version}</version>
         </dependency>
         <dependency>
             <groupId>org.kie</groupId>
             <artifactId>kogito-addons-quarkus-microprofile-config-service-catalog</artifactId>
-            <version>9.102.0.redhat-00005</version>
+            <version>9.103.0.redhat-00004</version>
         </dependency>
         <dependency>
             <groupId>io.quarkus</groupId>
