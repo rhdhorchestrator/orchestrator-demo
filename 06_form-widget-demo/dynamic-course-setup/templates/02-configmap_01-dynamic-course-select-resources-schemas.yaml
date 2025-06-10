@@ -1,4 +1,8 @@
 apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: 01-dynamic-course-select-resources-schemas
+  namespace: {{ .Release.Namespace }}
 data:
   dynamic-course-select__main-schema.json: |
     {
@@ -9,14 +13,16 @@ data:
       "properties": {
         "studentName": {
           "type": "string",
-          "title": "Student name (standard HTML component)"
+          "title": "Student name (standard HTML component)",
+          "pattern": "^[A-Z]([-a-z0-9]*[a-zA-Z0-9])?$"
         },
         "courseName": {
           "type": "string",
-          "title": "Course name (ActiveTextInput component with autocomplete, fetches default data, retriggered by studentName, a change triggers a SchemaUpdater), try to enter 'complexCourse'",
+          "title": "Course name (example of ActiveTextInput with autocomplete, try 'complexCourse')",
           "ui:widget": "ActiveTextInput",
           "ui:props": {
-            "fetch:url": "$${{`{{`}}backend.baseUrl{{`}}`}}/api/proxy/mytesthttpserver/courses?studentname=$${{`{{`}}current.courseName{{`}}`}}",
+            "devonlycomment": "Has autocomplete, fetches default data, is retriggered by studentName, its change triggers a SchemaUpdater.",
+            "fetch:url": "$${{`{{`}}backend.baseUrl{{`}}`}}/api/proxy/mytesthttpserver/courses?studentname=$${{`{{`}}current.studentName{{`}}`}}",
             "fetch:response:value": "mycourses.mydefault",
             "fetch:response:autocomplete": "listofcourses.all",
             "fetch:retrigger": ["current.studentName"],
@@ -25,7 +31,7 @@ data:
               "requesterName": "Mr./Mrs. $${{`{{`}}identityApi.displayName{{`}}`}}"
             },
             "fetch:headers": {
-              "githubNameNotUsedJustShowing": "${{`{{`}}githubAuthApi.profileName{{`}}`}}"
+              "githubNameNotUsedJustShowing": "$${{`{{`}}githubAuthApi.profileName{{`}}`}}"
             }
           }
         },
@@ -36,15 +42,15 @@ data:
         },
         "suggestedCourses": {
           "type": "string",
-          "title": "Suggested Additional Courses",
+          "title": "Suggested Additional Courses (this title is rendered on ReviewStep only)",
           "ui:widget": "ActiveText",
           "ui:props": {
-            "ui:variant": "h4",
+            "ui:variant": "caption",
             "fetch:url": "$${{`{{`}}backend.baseUrl{{`}}`}}/api/proxy/mytesthttpserver/suggested-courses?coursename=$${{`{{`}}current.courseName{{`}}`}}",
             "fetch:method": "GET",
             "fetch:response:suggestions": "suggestions",
             "fetch:retrigger": ["current.studentName", "current.courseName"],
-            "ui:text": "You might also be interested in: $${{`{{`}}fetch:response:suggestions{{`}}`}}"
+            "ui:text": "You might also be interested in: $${{`{{`}}fetch:response:suggestions{{`}}`}} (example of ActiveText)"
           }
         },
         "staticMessage": {
@@ -52,8 +58,26 @@ data:
           "title": "Suggested Additional Courses static",
           "ui:widget": "ActiveText",
           "ui:props": {
-            "ui:variant": "subtitle1",
-            "ui:text": "You might also be interested in other stuff"
+            "ui:variant": "h3",
+            "ui:text": "What do you prefer next? (example of ActiveText)"
+          }
+        },
+        "complimentaryDrinks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "Complimentary drinks (example of ActiveMultiselect)",
+          "ui:widget": "ActiveMultiSelect",
+          "ui:props": {
+            "fetch:url": "$${{`{{`}}backend.baseUrl{{`}}`}}/api/proxy/mytesthttpserver/drinks",
+            "fetch:response:autocomplete": "allDrinks",
+            "validate:url": "$${{`{{`}}backend.baseUrl{{`}}`}}/api/proxy/mytesthttpserver/validatedrinks",
+            "validate:method": "POST",
+            "validate:body": {
+              "field": "complimentaryDrinks",
+              "value": "$${{`{{`}}current.complimentaryDrinks{{`}}`}}"
+            }
           }
         },
         "preferredTeacher": {
@@ -61,7 +85,7 @@ data:
           "title": "Preferred teacher (by the ActiveDropdown widget with validation).",
           "ui:widget": "ActiveDropdown",
           "ui:props": {
-            "fetch:url": "$${{`{{`}}backend.baseUrl}}/api/proxy/mytesthttpserver/preferred-teacher?studentname=$${{`{{`}}current.studentName{{`}}`}}&coursename=$${{`{{`}}current.courseName{{`}}`}}",
+            "fetch:url": "$${{`{{`}}backend.baseUrl{{`}}`}}/api/proxy/mytesthttpserver/preferred-teacher?studentname=$${{`{{`}}current.studentName{{`}}`}}&coursename=$${{`{{`}}current.courseName{{`}}`}}",
             "fetch:response:label": "bar.labels",
             "fetch:response:value": "values",
             "fetch:retrigger": ["current.studentName", "current.courseName"],
@@ -72,7 +96,9 @@ data:
               "field": "preferredTeacher",
               "value": "$${{`{{`}}current.preferredTeacher{{`}}`}}",
               "courseName": "$${{`{{`}}current.courseName{{`}}`}}",
-              "studentName": "$${{`{{`}}current.studentName{{`}}`}}"
+              "studentName": "$${{`{{`}}current.studentName{{`}}`}}",
+              "justAPropertyOfAComplexObject": "$${{`{{`}}current.courseDetails.nickname{{`}}`}}",
+              "passingCourseDetailsAsComplexObject": "$${{`{{`}}current.courseDetails{{`}}`}}"
             }
           }
         },
@@ -84,12 +110,15 @@ data:
             "fetch:url": "$${{`{{`}}backend.baseUrl{{`}}`}}/api/proxy/mytesthttpserver/coursedetailsschema?coursename=$${{`{{`}}current.courseName{{`}}`}}",
             "fetch:retrigger": ["current.courseName"]
           }
+        },
+        "regularArray": {
+          "type": "array",
+          "title": "Regular array of strings",
+          "items": {
+            "type": "string",
+            "enum": ["foo", "bar", "fuzz"]
+          }
         }
       },
       "required": ["studentName", "courseName"]
     }
-kind: ConfigMap
-metadata:
-  creationTimestamp: null
-  name: 01-dynamic-course-select-resources-schemas
-  namespace: {{ .Release.Namespace }}
