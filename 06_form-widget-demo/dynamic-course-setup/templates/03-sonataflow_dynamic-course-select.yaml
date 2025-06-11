@@ -19,7 +19,7 @@ spec:
       schema: schemas/dynamic-course-select__main-schema.json
     functions:
       - name: PrintSuccessData
-        operation: '{ "result": { "message": "The workflow finished successfully.", "outputs": [ { "key": "resourceOne", "value": $WORKFLOW.instanceId }, { "key": "studentName", "value": .studentName }, { "key": "courseName", "value": .courseName }, { "key": "room", "value": .courseDetails.room }, { "key": "requestCertificate", "value": .courseDetails.requestCertificate } ] } }'
+        operation: '{ "result": { "message": "The workflow finished successfully.", "outputs": [ { "key": "resourceOne", "value": $WORKFLOW.instanceId }, { "key": "studentName", "value": .studentName }, { "key": "courseName", "value": .courseName }, { "key": "room", "value": .courseDetails.room }, { "key": "requestCertificate", "value": .courseDetails.requestCertificate }, { "key": "complimentaryDrinks", "value": .complimentaryDrinks }, { "key": "teacher", "value": .preferredTeacher } ] } }'
         type: expression
     start:
       stateName: Start
@@ -38,7 +38,7 @@ spec:
         type: operation
   podTemplate:
     container:
-      image: quay.io/orchestrator/dynamic-course-demo-workflow:latest
+      image: quay.io/orchestrator/dynamic-course-demo-workflow
       resources: {}
   resources:
     configMaps:
@@ -48,13 +48,13 @@ spec:
   persistence:
     postgresql:
       secretRef:
-        name: {{ .Values.postgresql.secretRef.name }}
-        userKey: {{ .Values.postgresql.secretRef.userKey }}
-        passwordKey: {{ .Values.postgresql.secretRef.passwordKey }}
+        name: sonataflow-psql-postgresql
+        userKey: postgres-username
+        passwordKey: postgres-password
       serviceRef:
-        name: {{ .Values.postgresql.serviceRef.name }}
-        port: {{ .Values.postgresql.serviceRef.port }}
-        databaseName: {{ .Values.postgresql.serviceRef.databaseName }}
+        name: sonataflow-psql-postgresql
+        port: 5432
+        databaseName: sonataflow
         databaseSchema: dynamic-course-select
 status:
   address: {}
