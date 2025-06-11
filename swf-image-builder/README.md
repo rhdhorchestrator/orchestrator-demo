@@ -13,7 +13,7 @@ podman build -t quay.io/kubesmarts/logic-swf-builder-rhel8:1.35.0-kafka-persiste
 
 On Linux aarch64/macos run:
 ```bash
-docker buildx build --platform linux/amd64 -t quay.io/kubesmarts/logic-swf-builder-rhel8:1.35.0-kafka-persistence --load .
+docker buildx build --platform linux/amd64 -t quay.io/kubesmarts/logic-swf-builder-rhel8:1.36.0-rc1 --load .
 ```
 
 ---
