@@ -48,13 +48,13 @@ spec:
   persistence:
     postgresql:
       secretRef:
-        name: sonataflow-psql-postgresql
-        userKey: postgres-username
-        passwordKey: postgres-password
+        name: {{ .Values.postgresql.secretRef.name }}
+        userKey: {{ .Values.postgresql.secretRef.userKey }}
+        passwordKey: {{ .Values.postgresql.secretRef.passwordKey }}
       serviceRef:
-        name: sonataflow-psql-postgresql
-        port: 5432
-        databaseName: sonataflow
+        name: {{ .Values.postgresql.serviceRef.name }}
+        port: {{ .Values.postgresql.serviceRef.port }}
+        databaseName: {{ .Values.postgresql.serviceRef.databaseName }}
         databaseSchema: dynamic-course-select
 status:
   address: {}
