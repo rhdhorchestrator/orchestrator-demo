@@ -184,9 +184,12 @@ function build_image {
     # These add-ons enable the use of JDBC for persisting workflow states and correlation
     # contexts in serverless workflow applications.
     local base_quarkus_extensions="\
-    org.kie:kie-addons-quarkus-persistence-jdbc:9.102.0.redhat-00005,\
-    io.quarkus:quarkus-jdbc-postgresql:3.8.6.redhat-00004,\
-    io.quarkus:quarkus-agroal:3.8.6.redhat-00004"
+    io.quarkiverse.openapi.generator:quarkus-openapi-generator:2.9.1-lts,\
+    org.kie:kie-addons-quarkus-monitoring-sonataflow,\
+    org.kie:kogito-addons-quarkus-jobs-knative-eventing,\
+    org.kie:kie-addons-quarkus-persistence-jdbc,\
+    io.quarkus:quarkus-jdbc-postgresql:3.15.4.redhat-00001,\
+    io.quarkus:quarkus-agroal:3.15.4.redhat-00001"
 
     # The 'maxYamlCodePoints' parameter contols the maximum size for YAML input files. 
     # Set to 35000000 characters which is ~33MB in UTF-8.  

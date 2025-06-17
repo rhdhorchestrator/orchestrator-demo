@@ -1,7 +1,8 @@
 ARG BUILDER_IMAGE
 ARG RUNTIME_IMAGE
 
-FROM ${BUILDER_IMAGE:-registry.redhat.io/openshift-serverless-1/logic-swf-builder-rhel8:1.35.0-6} AS builder
+FROM ${BUILDER_IMAGE:-registry.redhat.io/openshift-serverless-1/logic-swf-builder-rhel8:1.36.0-8} AS builder
+#FROM ${BUILDER_IMAGE:-quay.io/orchestrator/logic-swf-builder-rhel8:1.36.0-disconnected} AS builder
 
 # Variables that can be overridden by the builder
 # To add a Quarkus extension to your application
@@ -13,9 +14,9 @@ ARG MAVEN_ARGS_APPEND
 ENV MAVEN_ARGS_APPEND=${MAVEN_ARGS_APPEND}
 
 # Create the Quarkus config directory and add the config.yaml file
-RUN mkdir -p /home/kogito/.quarkus && \
-    printf "registries:\n  - registry.quarkus.redhat.com\n" > $HOME/.quarkus/config.yaml && \
-    chown -R 1001:0 /home/kogito/.quarkus
+# RUN mkdir -p /home/kogito/.quarkus && \
+#     printf "registries:\n  - registry.quarkus.redhat.com\n" > $HOME/.quarkus/config.yaml && \
+#     chown -R 1001:0 /home/kogito/.quarkus
 
 COPY --chown=1001 . .
 
