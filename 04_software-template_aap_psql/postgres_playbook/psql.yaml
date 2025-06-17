@@ -45,6 +45,8 @@
                   app: spring-petclinic
                   name: postgresql
               spec:
+                securityContext:
+                  fsGroup: 1001              
                 containers:
                 - name: postgresql
                   imagePullPolicy: Always
