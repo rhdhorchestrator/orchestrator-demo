@@ -40,6 +40,7 @@ See [demo recording](https://www.youtube.com/watch?v=ApDemFgkjqo).
 5. **Image Registry**:  
    - Quay.io (default) with a target repository created.
 6. **AAP** with [Ansible playbook](./postgres_playbook/psql.yaml) imported (details below)
+7. **GitHub** Organization with a org-level secret `REPO_TOKEN` for pushing PRs into the new repositories in the target organization of repositories created by the software template (see usage [here](https://github.com/rhdhorchestrator/orchestrator-demo/blob/release-1.6/04_software-template_aap_psql/spring-petclinic-software-template/skeletons/github-actions/.github/workflows/ci.yaml#L56)). 
 
 ---
 
