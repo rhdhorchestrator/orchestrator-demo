@@ -40,7 +40,8 @@ See [demo recording](https://www.youtube.com/watch?v=ApDemFgkjqo).
 5. **Image Registry**:  
    - Quay.io (default) with a target repository created.
 6. **AAP** with [Ansible playbook](./postgres_playbook/psql.yaml) imported (details below)
-7. **GitHub** Organization with a org-level secret `REPO_TOKEN` for pushing PRs into the new repositories in the target organization of repositories created by the software template (see usage [here](https://github.com/rhdhorchestrator/orchestrator-demo/blob/release-1.6/04_software-template_aap_psql/spring-petclinic-software-template/skeletons/github-actions/.github/workflows/ci.yaml#L56)). 
+7. **A GitHub organization** (not a personal GitHub account) is required, as the software template automates the creation of new repositories within that organization.
+8. The organization must define an **organization-level secret** named `REPO_TOKEN`. This token is used by the automation (GitHub action) to authenticate and push pull requests into the newly created repositories. See [usage example](https://github.com/rhdhorchestrator/orchestrator-demo/blob/release-1.6/04_software-template_aap_psql/spring-petclinic-software-template/skeletons/github-actions/.github/workflows/ci.yaml#L56) for how this token is referenced and used in the workflow.
 
 ---
 
