@@ -41,14 +41,23 @@ See [demo recording](https://www.youtube.com/watch?v=ApDemFgkjqo).
    - Quay.io (default) with a target repository created.
 6. **AAP** with [Ansible playbook](./postgres_playbook/psql.yaml) imported (details below)
 7. **A GitHub organization** (not a personal GitHub account) is required, as the software template automates the creation of new repositories within that organization.
-8. The organization must define an **organization-level secret** named `REPO_TOKEN`. This token is used by the automation (GitHub action) to authenticate and push pull requests into the newly created repositories. See [usage example](https://github.com/rhdhorchestrator/orchestrator-demo/blob/release-1.6/04_software-template_aap_psql/spring-petclinic-software-template/skeletons/github-actions/.github/workflows/ci.yaml#L56) for how this token is referenced and used in the workflow.
-### ✅ Required GitHub Token Permissions
+8. **GitHub Token** at organization level: To enable the software template automation to create and configure repositories, your GitHub organization must define an organization-level secret named `REPO_TOKEN`.
+  This token should be a **Personal Access Token (PAT)** with the following minimum permissions:
+  ✅ Required GitHub Token Permissions
+  
+  | Scope              | Permission           | Reason                                                                 |
+  |-------------------|----------------------|------------------------------------------------------------------------|
+  | `repo`            | Full access          | Required to create branches, commit files, and open pull requests in new repositories |
+  | `workflow`        | `write` *(optional)* | Needed if the automation triggers GitHub Actions workflows in the created repositories |
+  | `admin:repo_hook` | `read` or `write` *(optional)* | Required if webhooks are configured automatically for CI/CD or integrations |
+  
+  > 📌 The `REPO_TOKEN` must be added as an **organization-level secret** under:  
+  > `GitHub → Organization Settings → Actions → Secrets and variables → Actions secrets`
+  
+  For guidance on creating a GitHub PAT, refer to [GitHub Docs: Creating a Personal Access Token](https://docs.github.com/en/github/authenticating-to-github/creating-a-personal-access-token).
 
-| Scope              | Permission     | Reason                                                                 |
-|-------------------|----------------|------------------------------------------------------------------------|
-| `repo`            | Full access    | Required to create branches, commit files, and open pull requests in new repositories |
-| `workflow`        | `write` (optional) | Needed if the automation triggers GitHub Actions workflows in the created repositories |
-| `admin:repo_hook` | `read` or `write` (optional) | Required if webhooks are configured automatically for CI/CD or integrations |
+
+
 
 ---
 
