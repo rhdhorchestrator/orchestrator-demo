@@ -43,8 +43,7 @@ See [demo recording](https://www.youtube.com/watch?v=ApDemFgkjqo).
 7. **A GitHub organization** (not a personal GitHub account) is required, as the software template automates the creation of new repositories within that organization.
 8. **GitHub Token** at organization level: To enable the software template automation to create and configure repositories, your GitHub organization must define an organization-level secret named `REPO_TOKEN`.
   This token should be a **Personal Access Token (PAT)** with the following minimum permissions:
-  ✅ Required GitHub Token Permissions
-  
+
   | Scope              | Permission           | Reason                                                                 |
   |-------------------|----------------------|------------------------------------------------------------------------|
   | `repo`            | Full access          | Required to create branches, commit files, and open pull requests in new repositories |
