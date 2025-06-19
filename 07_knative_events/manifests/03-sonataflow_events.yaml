@@ -1,0 +1,101 @@
+apiVersion: sonataflow.org/v1alpha08
+kind: SonataFlow
+metadata:
+  annotations:
+    sonataflow.org/description: Event base workflow
+    sonataflow.org/expressionLang: jq
+    sonataflow.org/profile: gitops
+    sonataflow.org/version: "1.0"
+  creationTimestamp: null
+  labels:
+    app: events
+    sonataflow.org/workflow-app: events
+  name: events
+spec:
+  flow:
+    events:
+      - dataOnly: true
+        kind: produced
+        name: produceEvent
+        type: produce
+      - dataOnly: true
+        kind: consumed
+        name: waitEvent
+        type: wait
+    functions:
+      - name: print
+        operation: sysout
+        type: custom
+      - name: successResult
+        operation: '{ "result": { "message": .message, "outputs":[] } }'
+        type: expression
+    start:
+      stateName: waitForEvent
+    states:
+      - exclusive: true
+        name: waitForEvent
+        onEvents:
+          - actionMode: sequential
+            actions:
+              - actionDataFilter:
+                  useResults: true
+                functionRef:
+                  arguments:
+                    message: ${ "waitEvent received " + .message }
+                  invoke: sync
+                  refName: print
+            eventDataFilter:
+              useData: true
+            eventRefs:
+              - waitEvent
+        transition:
+          nextState: reply
+          produceEvents:
+            - data: '{message: "This is the reply message", other: "Another field"}'
+              eventRef: produceEvent
+        type: event
+      - actionMode: sequential
+        actions:
+          - actionDataFilter:
+              useResults: true
+            functionRef:
+              arguments:
+                message: '"Received message: " + .message'
+              invoke: sync
+              refName: print
+          - actionDataFilter:
+              useResults: true
+            functionRef:
+              invoke: sync
+              refName: successResult
+            name: setOutput
+        end:
+          terminate: true
+        name: reply
+        type: operation
+  podTemplate:
+    container:
+      image: quay.io/orchestrator/demo-eventing
+      resources: {}
+      envFrom:
+        - secretRef:
+            name: events-secrets
+  resources:
+    configMaps:
+      - configMap:
+          name: 01-events-resources-schemas
+        workflowPath: schemas
+  persistence:
+    postgresql:
+      secretRef:
+        name: sonataflow-psql-postgresql
+        userKey: postgres-username
+        passwordKey: postgres-password
+      serviceRef:
+        name: sonataflow-psql-postgresql
+        port: 5432
+        databaseName: sonataflow
+        databaseSchema: events
+status:
+  address: {}
+  lastTimeRecoverAttempt: null

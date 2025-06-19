@@ -20,6 +20,9 @@ spec:
       failOnValidationErrors: true
       schema: schemas/workflow-input-schema.json
     functions:
+      - name: GetSoftwareTemplateTaskEvents
+        operation: specs/scaffolder-openapi.yaml#getTaskEvents
+        type: rest
       - name: LaunchSoftwareTemplate
         operation: specs/scaffolder-openapi.yaml#createTask
         type: rest
@@ -33,7 +36,7 @@ spec:
         operation: '{ "result": { "outputs":[ { "key":"Service Component in Catalog", "value": $SECRET.rhdh_url + "/catalog/default/component/" + .serviceName, "format":"link" } ] } }'
         type: expression
       - name: templateErrorResult
-        operation: '{ "result": { "message": "Launching software template " + $SECRET.software_template_ref + " for service " + .serviceName + " for owner " + .owner + " failed.", "outputs":[] } }'
+        operation: '{ "result": { "message": "Failed to launch the software template \($SECRET.software_template_ref) to create the service \(.serviceName) for owner \(.owner).", "outputs":[ { "key":"Error", "value": ([.taskEvents[] | select(.body.error.message != null and .body.error.message != "") | .body.error.message] | join("\n")), "format":"text" } ] } }'
         type: expression
     start:
       stateName: LaunchSoftwareTemplate
@@ -89,7 +92,7 @@ spec:
               nextState: UpdateSoftwareTemplateTaskCompleted
           - condition: (.readTask.status == "failed")
             transition:
-              nextState: UpdateSoftwareTemplateTaskFailed
+              nextState: GetTaskEventsForFailedTask
         defaultCondition:
           transition:
             nextState: GetSoftwareTemplate
@@ -109,18 +112,36 @@ spec:
       - actionMode: sequential
         actions:
           - actionDataFilter:
+              toStateData: .taskEvents
               useResults: true
             functionRef:
+              arguments:
+                events: true
+                taskId: .readTask.id
               invoke: sync
-              refName: templateErrorResult
-            name: templateErrorResult
+              refName: GetSoftwareTemplateTaskEvents
+        name: GetTaskEventsForFailedTask
+        transition:
+          nextState: UpdateSoftwareTemplateTaskFailed
+        type: operation
+      - actionMode: sequential
+        actions:
+          - actionDataFilter:
+              useResults: true
+            functionRef:
+              arguments:
+                message: '"Failed to laucnh software template. See software template event messages: " + ([.taskEvents[] | select(.body.error.message != null and .body.error.message != "") | .body.error.message] | join("\n"))'
+              invoke: sync
+              refName: logInfo
         end:
           terminate: true
+        metadata:
+          errorMessage: '"Failed to launch the software template \"" + $SECRET.software_template_ref + "\" to create the service \"" + .serviceName + "\" for owner \"" + .owner + "\".\n\n" + ( [.taskEvents[] | select(.body.error.message != null and .body.error.message != "") | .body.error.message ] | if length > 0 then "Error details:\n" + join("\n") else "" end )'
         name: UpdateSoftwareTemplateTaskFailed
         type: operation
   podTemplate:
     container:
-      image: quay.io/orchestrator/demo-software-template-hello-world:latest
+      image: quay.io/orchestrator/demo-software-template-hello-world
       resources: {}
       envFrom:
         - secretRef:
