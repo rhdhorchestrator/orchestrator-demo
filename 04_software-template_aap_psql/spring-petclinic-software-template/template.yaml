@@ -116,7 +116,6 @@ spec:
                   title: Quay.io Namespace
                   type: string
                   description: The Quay.io namespace or organization
-                  ui:field: Secret
                 quayUserName:
                   title: Quay.io username
                   type: string
@@ -238,7 +237,7 @@ spec:
         repoVisibility: public
         requiredApprovingReviewCount: 0
         secrets:
-          REGISTRY_NAMESPACE: "${{ secrets.imageNamespace }}"
+          REGISTRY_NAMESPACE: "${{ parameters.imageNamespace }}"
           REGISTRY_USERNAME: "${{ secrets.quayUserName }}"
           REGISTRY_PASSWORD: "${{ secrets.quayPassword }}"
           REGISTRY_URI: "${{ parameters.imageRepository }}"
