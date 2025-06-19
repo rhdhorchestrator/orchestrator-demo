@@ -1,0 +1,91 @@
+apiVersion: sonataflow.org/v1alpha08
+kind: SonataFlow
+metadata:
+  annotations:
+    sonataflow.org/description: Print input value
+    sonataflow.org/expressionLang: jq
+    sonataflow.org/profile: gitops
+    sonataflow.org/version: "1.0"
+  creationTimestamp: null
+  labels:
+    app: basic
+    sonataflow.org/workflow-app: basic
+  name: basic
+spec:
+  flow:
+    dataInputSchema:
+      failOnValidationErrors: true
+      schema: schemas/basic__main-schema.json
+    functions:
+      - name: createNotification
+        operation: notifications#createNotification
+        type: rest
+      - name: print
+        operation: sysout
+        type: custom
+      - name: successResult
+        operation: '{ "result": { "message": "Project " + .projectName + " active", "outputs":[] } }'
+        type: expression
+    start:
+      stateName: Print inputs
+    states:
+      - actionMode: sequential
+        actions:
+          - actionDataFilter:
+              useResults: true
+            functionRef:
+              arguments:
+                payload:
+                  description: '"Project " + .projectName'
+                  severity: normal
+                  title: '"Project " + .projectName'
+                  topic: basic
+                recipients:
+                  entityRef: .recipients
+                  type: entity
+              invoke: sync
+              refName: createNotification
+            name: Create notification
+          - actionDataFilter:
+              useResults: true
+            functionRef:
+              arguments:
+                message: '"Project " + .projectName'
+              invoke: sync
+              refName: print
+          - actionDataFilter:
+              useResults: true
+            functionRef:
+              invoke: sync
+              refName: successResult
+            name: setOutput
+        end:
+          terminate: true
+        name: Print inputs
+        type: operation
+  podTemplate:
+    container:
+      image: quay.io/orchestrator/demo-basic
+      resources: {}
+      envFrom:
+        - secretRef:
+            name: basic-secrets
+  resources:
+    configMaps:
+      - configMap:
+          name: 01-basic-resources-schemas
+        workflowPath: schemas
+  persistence:
+    postgresql:
+      secretRef:
+        name: sonataflow-psql-postgresql
+        userKey: postgres-username
+        passwordKey: postgres-password
+      serviceRef:
+        name: sonataflow-psql-postgresql
+        port: 5432
+        databaseName: sonataflow
+        databaseSchema: basic
+status:
+  address: {}
+  lastTimeRecoverAttempt: null

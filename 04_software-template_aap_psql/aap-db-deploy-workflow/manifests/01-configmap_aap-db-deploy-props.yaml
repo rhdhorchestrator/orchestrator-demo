@@ -1,0 +1,57 @@
+apiVersion: v1
+data:
+  application.properties: |+
+    # Backstage Notifications service
+    rhdh_url=${RHDH_URL}
+    quarkus.rest-client.notifications.url=${rhdh_url}
+    quarkus.openapi-generator.notifications.auth.BearerToken.bearer-token=${NOTIFICATIONS_BEARER_TOKEN}
+
+    # Backstage Scaffolder service
+    quarkus.rest-client.scaffolder_openapi_yaml.url=${rhdh_url}
+    quarkus.openapi-generator.scaffolder_openapi_yaml.auth.BearerToken.bearer-token=${SCAFFOLDER_BEARER_TOKEN}
+    software_template_ref=${SOFTWARE_TEMPLATE_REF:template:default/my-spring-petclinic-template}
+
+    # Ansible Automation Platform Settings
+    app_url=${AAP_URL}
+    quarkus.rest-client.aap_openapi_yaml.url=${app_url}
+    quarkus.openapi-generator.aap_openapi_yaml.auth.basicAuth.username=${AAP_USERNAME}
+    quarkus.openapi-generator.aap_openapi_yaml.auth.basicAuth.password=${AAP_PASSWORD}
+
+    quarkus.tls.trust-all=true
+    quarkus.kubernetes-client.trust-certs=true
+
+    # ArgoCD Cluster
+    quarkus.rest-client.argocd_openapi_yaml.url=${ARGOCD_OCP_API_URL}
+    quarkus.openapi-generator.argocd_openapi_yaml.auth.BearerToken.bearer-token=${ARGOCD_OCP_API_TOKEN}
+    quarkus.tls.trust-all=true
+    quarkus.kubernetes-client.trust-certs=true
+
+    # Github
+    quarkus.rest-client.github_openapi_yaml.url=https://api.github.com
+    ghToken=${GITHUB_TOKEN}
+    quarkus.openapi-generator.github_openapi_yaml.auth.BearerToken.bearer-token=${ghToken}
+
+    # ArgoCD namespace
+    target_namespace=${TARGET_ARGOCD_NAMESPACE:spring-petclinic-dev}
+    target_argocd_project=${TARGET_ARGOCD_PROJECT:default}
+    target_application_namespace=${TARGET_APPLICATION_PROJECT:orchestrator-gitops}
+
+    # Quay
+    quay_username=${QUAY_USERNAME}
+    quay_password=${QUAY_PASSWORD}
+
+    # AAP Template ID
+    aap_template_id=${AAP_TEMPLATE_ID}
+
+    quarkus.log.category."org.apache.http".level=DEBUG
+
+    # enable persistence
+    kie.flyway.enabled = true
+
+kind: ConfigMap
+metadata:
+  creationTimestamp: null
+  labels:
+    app: aap-db-deploy
+    sonataflow.org/workflow-app: aap-db-deploy
+  name: aap-db-deploy-props
