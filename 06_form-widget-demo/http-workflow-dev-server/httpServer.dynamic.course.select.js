@@ -135,6 +135,58 @@ app.get('/coursedetailsschema', (req, res) => {
   res.send(JSON.stringify(courseDetailsSchema));
 });
 
+app.post('/certificatesschema', (req, res) => {
+  logRequest(req);
+
+  // example of passing template arrays
+  const courseNames = req.body?.courseNames;
+
+  if (!Array.isArray(courseNames) || courseNames.length < 1) {
+    return {};
+  }
+
+  // A complex data object with redundant props.
+  // The "fetch:response:value" selector needs to be used to pick-up the relevant content for the SchemaUpdater widget.
+  // In particular, it will match the "complexResponse.mydataroot.mydata" which is an object containing a single property "sendCertificatesAs" which matches a property in the UI schema
+  const complexResponse = {
+    "foo": "bar",
+    "prop1": {
+      "subprop": "a lot of complex but useless stuff"
+    },
+    "mydataroot": {}
+  };
+
+  let content;
+  if (courseNames[0] === 'one course') {
+    content = {
+      sendCertificatesAs: {
+        type: 'string',
+        title: 'Send certificates via',
+        "enum": [
+          "email",
+          "post",
+          "pigeon"
+        ]
+      },
+    };
+  } else {
+    content = {
+      sendCertificatesAs: {
+        type: 'string',
+        title: 'Send certificates via',
+        "ui:widget": "ActiveText",
+        "ui:props": {
+          "ui:variant": "caption",
+          "ui:text": "This course does not provide any certificate."
+        }
+      },
+    };
+  }
+  complexResponse.mydataroot.mydata = content;
+
+  // HTTP 200
+  res.send(JSON.stringify(complexResponse));
+});
 app.get('/rooms', (req, res) => {
   logRequest(req);
 
