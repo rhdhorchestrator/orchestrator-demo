@@ -21,7 +21,7 @@
         "fetch:retrigger": ["current.studentName"],
         "fetch:method": "POST",
         "fetch:body": {
-          "requesterName": "Mr./Mrs. $${{identityApi.displayName}}"
+          "requesterName": ["Mr./Mrs.", "$${{current.studentName}}", "as requested by $${{identityApi.displayName}} (logged in)"]
         },
         "fetch:headers": {
           "githubNameNotUsedJustShowing": "${{githubAuthApi.profileName}}"

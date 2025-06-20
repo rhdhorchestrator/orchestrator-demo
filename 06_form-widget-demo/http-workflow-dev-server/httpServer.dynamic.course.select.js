@@ -45,11 +45,16 @@ app.post('/courses', (req, res) => {
   const requesterName = req.body?.requesterName;
   const studentName = req.query?.studentname;
 
+  let joinedRequesterName = requesterName;
+  if (Array.isArray(requesterName)) {
+    joinedRequesterName = requesterName.join(' ');
+  }
+
   const optionsForAutocomplete = [
     'one course',
     'another course',
     'complexCourse',
-    `a course just for ${requesterName}`,
+    `a course just for ${joinedRequesterName}`,
   ];
   if (studentName && studentName !== '___undefined___') {
     optionsForAutocomplete.push(`I want to be a course for ${studentName}`);
