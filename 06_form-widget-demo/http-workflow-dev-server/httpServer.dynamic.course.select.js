@@ -33,6 +33,8 @@ const logRequest = req => {
   });
 };
 
+const UNDEFINED = '___undefined___';
+
 app.get('/', (_, res) => {
   res.send(
     'Hello World from HTTP test server providing endpoints for the "Dynamic course select" workflow',
@@ -45,13 +47,18 @@ app.post('/courses', (req, res) => {
   const requesterName = req.body?.requesterName;
   const studentName = req.query?.studentname;
 
+  let joinedRequesterName = requesterName;
+  if (Array.isArray(requesterName)) {
+    joinedRequesterName = requesterName.join(' ');
+  }
+
   const optionsForAutocomplete = [
     'one course',
     'another course',
     'complexCourse',
-    `a course just for ${requesterName}`,
+    `a course just for ${joinedRequesterName}`,
   ];
-  if (studentName && studentName !== '___undefined___') {
+  if (studentName && studentName !== UNDEFINED) {
     optionsForAutocomplete.push(`I want to be a course for ${studentName}`);
   }
 
@@ -69,7 +76,7 @@ app.get('/coursedetailsschema', (req, res) => {
   logRequest(req);
 
   const courseName = req.query?.coursename;
-  if (!courseName || courseName === '___undefined___') {
+  if (!courseName || courseName === UNDEFINED) {
     // Not enough data yet
     res.send(
       JSON.stringify({
@@ -130,6 +137,58 @@ app.get('/coursedetailsschema', (req, res) => {
   res.send(JSON.stringify(courseDetailsSchema));
 });
 
+app.post('/certificatesschema', (req, res) => {
+  logRequest(req);
+
+  // example of passing template arrays
+  const courseNames = req.body?.courseNames;
+
+  if (!Array.isArray(courseNames) || courseNames.length < 1) {
+    return {};
+  }
+
+  // A complex data object with redundant props.
+  // The "fetch:response:value" selector needs to be used to pick-up the relevant content for the SchemaUpdater widget.
+  // In particular, it will match the "complexResponse.mydataroot.mydata" which is an object containing a single property "sendCertificatesAs" which matches a property in the UI schema
+  const complexResponse = {
+    "foo": "bar",
+    "prop1": {
+      "subprop": "a lot of complex but useless stuff"
+    },
+    "mydataroot": {}
+  };
+
+  let content;
+  if (courseNames[0] === 'one course') {
+    content = {
+      sendCertificatesAs: {
+        type: 'string',
+        title: 'Send certificates via',
+        "enum": [
+          "email",
+          "post",
+          "pigeon"
+        ]
+      },
+    };
+  } else {
+    content = {
+      sendCertificatesAs: {
+        type: 'string',
+        title: 'Send certificates via',
+        "ui:widget": "ActiveText",
+        "ui:props": {
+          "ui:variant": "caption",
+          "ui:text": "This course does not provide any certificate."
+        }
+      },
+    };
+  }
+  complexResponse.mydataroot.mydata = content;
+
+  // HTTP 200
+  res.send(JSON.stringify(complexResponse));
+});
 app.get('/rooms', (req, res) => {
   logRequest(req);
 
@@ -185,7 +244,7 @@ app.get('/preferred-teacher', (req, res) => {
 
   const values = ['123_tim', '456_jack', '789_john', 'he_is_special'];
 
-  if (studentName && studentName !== '___undefined___') {
+  if (studentName && studentName !== UNDEFINED) {
     labels.push(`Someone who knows ${studentName}`);
     values.push('acquaintant');
   }
@@ -242,7 +301,7 @@ app.get('/coursedetailsschema', (req, res) => {
   const courseName = req.query?.coursename;
 
   let mydefault = 'My default room';
-  if (courseName && courseName !== '___undefined___') {
+  if (courseName && courseName !== UNDEFINED) {
     mydefault += ` for "${courseName}" course`;
   }
 
@@ -284,17 +343,48 @@ app.get('/suggested-courses', (req, res) => {
 app.get('/drinks', (req, res) => {
   logRequest(req);
 
+  const allDrinks = [
+    'water',
+    'sparkling water',
+    'water with lemon',
+    'water on rocks',
+    'prohibited drink',
+  ];
+
+  const response = {
+    allDrinks,
+  }
+
   // HTTP 200
   res.send(
-    JSON.stringify({
-      allDrinks: [
-        'water',
-        'sparkling water',
-        'water with lemon',
-        'water on rocks',
-        'prohibited drink',
-      ],
-    }),
+    JSON.stringify(response),
+  );
+});
+
+app.get('/mascots', (req, res) => {
+  logRequest(req);
+
+  const studentName = req.query?.studentname;
+
+  const allMascots = [
+    'penguin',
+    'pikachu',
+    'dragon',
+    'dog',
+    'cat'
+  ];
+
+  if (studentName && studentName !== UNDEFINED) {
+    allMascots.push(`a pet of ${studentName}`);
+  }
+
+  const response = {
+    allMascots,
+  }
+
+  // HTTP 200
+  res.send(
+    JSON.stringify(response),
   );
 });
 

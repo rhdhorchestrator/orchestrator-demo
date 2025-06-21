@@ -4,13 +4,13 @@
   "license": "Apache-2.0",
   "main": "index.ts",
   "scripts": {
-    "start": "node ./index.js",
-    "start-courses": "node ./httpServer.dynamic.course.select.js",
     "prettier:check": "prettier --ignore-unknown --check .",
     "prettier:fix": "prettier --ignore-unknown --write .",
-    "update-running-workflow": "cp -r ./exampleWorkflows/* ../../../packages/backend/.devModeTemp/repository/workflows/",
     "podman:build": "podman build -t http.dynamic.course.select:latest .",
-    "podman:run": "podman run --expose=12345 http.dynamic.course.select:latest"
+    "podman:run": "podman run --expose=12345 http.dynamic.course.select:latest",
+    "update-running-workflow": "cp -r ./exampleWorkflows/* ../../../rhdh-plugins/workspaces/orchestrator/packages/backend/.devModeTemp/repository/workflows/",
+    "start": "node ./index.js",
+    "start-courses": "node ./httpServer.dynamic.course.select.js"
   },
   "dependencies": {
     "express": "^5.1.0"
