@@ -33,6 +33,8 @@ const logRequest = req => {
   });
 };
 
+const UNDEFINED = '___undefined___';
+
 app.get('/', (_, res) => {
   res.send(
     'Hello World from HTTP test server providing endpoints for the "Dynamic course select" workflow',
@@ -56,7 +58,7 @@ app.post('/courses', (req, res) => {
     'complexCourse',
     `a course just for ${joinedRequesterName}`,
   ];
-  if (studentName && studentName !== '___undefined___') {
+  if (studentName && studentName !== UNDEFINED) {
     optionsForAutocomplete.push(`I want to be a course for ${studentName}`);
   }
 
@@ -74,7 +76,7 @@ app.get('/coursedetailsschema', (req, res) => {
   logRequest(req);
 
   const courseName = req.query?.coursename;
-  if (!courseName || courseName === '___undefined___') {
+  if (!courseName || courseName === UNDEFINED) {
     // Not enough data yet
     res.send(
       JSON.stringify({
@@ -242,7 +244,7 @@ app.get('/preferred-teacher', (req, res) => {
 
   const values = ['123_tim', '456_jack', '789_john', 'he_is_special'];
 
-  if (studentName && studentName !== '___undefined___') {
+  if (studentName && studentName !== UNDEFINED) {
     labels.push(`Someone who knows ${studentName}`);
     values.push('acquaintant');
   }
@@ -299,7 +301,7 @@ app.get('/coursedetailsschema', (req, res) => {
   const courseName = req.query?.coursename;
 
   let mydefault = 'My default room';
-  if (courseName && courseName !== '___undefined___') {
+  if (courseName && courseName !== UNDEFINED) {
     mydefault += ` for "${courseName}" course`;
   }
 
@@ -341,17 +343,48 @@ app.get('/suggested-courses', (req, res) => {
 app.get('/drinks', (req, res) => {
   logRequest(req);
 
+  const allDrinks = [
+    'water',
+    'sparkling water',
+    'water with lemon',
+    'water on rocks',
+    'prohibited drink',
+  ];
+
+  const response = {
+    allDrinks,
+  }
+
   // HTTP 200
   res.send(
-    JSON.stringify({
-      allDrinks: [
-        'water',
-        'sparkling water',
-        'water with lemon',
-        'water on rocks',
-        'prohibited drink',
-      ],
-    }),
+    JSON.stringify(response),
+  );
+});
+
+app.get('/mascots', (req, res) => {
+  logRequest(req);
+
+  const studentName = req.query?.studentname;
+
+  const allMascots = [
+    'penguin',
+    'pikachu',
+    'dragon',
+    'dog',
+    'cat'
+  ];
+
+  if (studentName && studentName !== UNDEFINED) {
+    allMascots.push(`a pet of ${studentName}`);
+  }
+
+  const response = {
+    allMascots,
+  }
+
+  // HTTP 200
+  res.send(
+    JSON.stringify(response),
   );
 });
 

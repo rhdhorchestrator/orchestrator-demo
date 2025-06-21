@@ -82,6 +82,20 @@
         }
       }
     },
+    "favoriteMascot": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "title": "Your favorite mascot (example of ActiveMultiselect with mandatory defaults)",
+      "ui:widget": "ActiveMultiSelect",
+      "ui:props": {
+        "fetch:url": "$${{backend.baseUrl}}/api/proxy/mytesthttpserver/mascots?studentname=$${{current.studentName}}",
+        "fetch:response:autocomplete": "allMascots",
+        "devonlycomment": "First two items are pre-selected and the user can not delete them (are mandatory)",
+        "fetch:response:mandatory": "allMascots[[0..1]]"
+      }
+    },
     "preferredTeacher": {
       "type": "string",
       "title": "Preferred teacher (by the ActiveDropdown widget with validation).",
