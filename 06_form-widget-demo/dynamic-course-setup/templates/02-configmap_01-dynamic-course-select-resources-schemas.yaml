@@ -28,7 +28,11 @@ data:
             "fetch:retrigger": ["current.studentName"],
             "fetch:method": "POST",
             "fetch:body": {
-              "requesterName": "Mr./Mrs. $${{`{{`}}identityApi.displayName{{`}}`}}"
+              "requesterName": [
+                "Mr./Mrs.",
+                "$${{`{{`}}current.studentName{{`}}`}}",
+                "as requested by $${{`{{`}}identityApi.displayName{{`}}`}} (logged in)"
+              ]
             },
             "fetch:headers": {
               "githubNameNotUsedJustShowing": "$${{`{{`}}githubAuthApi.profileName{{`}}`}}"
@@ -80,6 +84,20 @@ data:
             }
           }
         },
+        "favoriteMascot": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "Your favorite mascot (example of ActiveMultiselect with mandatory defaults)",
+          "ui:widget": "ActiveMultiSelect",
+          "ui:props": {
+            "fetch:url": "$${{`{{`}}backend.baseUrl{{`}}`}}/api/proxy/mytesthttpserver/mascots?studentname=$${{`{{`}}current.studentName{{`}}`}}",
+            "fetch:response:autocomplete": "allMascots",
+            "devonlycomment": "First two items are pre-selected and the user can not delete them (are mandatory)",
+            "fetch:response:mandatory": "allMascots[[0..1]]"
+          }
+        },
         "preferredTeacher": {
           "type": "string",
           "title": "Preferred teacher (by the ActiveDropdown widget with validation).",
@@ -102,18 +120,37 @@ data:
             }
           }
         },
+        "sendCertificatesAs": {
+          "type": "object",
+          "title": "This title will never be displayed. Will be managed by the 'mySchemaUpdaterForCertificates'.",
+          "ui:widget": "hidden"
+        },
         "mySchemaUpdater": {
           "type": "string",
-          "title": "This title will never be displayed. The 'type' is irrelevant. There can be multiple SchemaUpdater instances, if you like. They can even be dynamically supplied by one of them.",
+          "title": "This title will never be displayed. The 'type' is irrelevant. Check the implementation of the /coursedetailsschema endpoint - its response leads to update of the 'courseDetails property'.",
           "ui:widget": "SchemaUpdater",
           "ui:props": {
             "fetch:url": "$${{`{{`}}backend.baseUrl{{`}}`}}/api/proxy/mytesthttpserver/coursedetailsschema?coursename=$${{`{{`}}current.courseName{{`}}`}}",
             "fetch:retrigger": ["current.courseName"]
           }
         },
+        "mySchemaUpdaterForCertificates": {
+          "type": "string",
+          "title": "Demonstrates the use of fetch:response:value leading to populating the 'sendCertificatesAs' property. There can be multiple SchemaUpdater instances, if you like. Additional SchemaUpdaters can be even be dynamically injected by one of them.",
+          "ui:widget": "SchemaUpdater",
+          "ui:props": {
+            "fetch:url": "$${{`{{`}}backend.baseUrl{{`}}`}}/api/proxy/mytesthttpserver/certificatesschema",
+            "fetch:method": "POST",
+            "fetch:body": {
+              "courseNames": ["$${{`{{`}}current.courseName{{`}}`}}"]
+            },
+            "fetch:retrigger": ["current.courseName"],
+            "fetch:response:value": "mydataroot.mydata"
+          }
+        },
         "regularArray": {
           "type": "array",
-          "title": "Regular array of strings",
+          "title": "Regular array of strings (useless, just for comparison)",
           "items": {
             "type": "string",
             "enum": ["foo", "bar", "fuzz"]
