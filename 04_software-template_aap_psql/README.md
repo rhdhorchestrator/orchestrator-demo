@@ -166,6 +166,8 @@ oc label namespace $ARGOCD_NAMESPACE rhdh.redhat.com/argocd-namespace=
 ```
 With `ARGOCD_NAMESPACE` being the target namespace in which ArgoCD must deploy the application.
 
+Target namespace should also be labeled with `argocd.argoproj.io/managed-by: <argocd-namespace>` (e.g. `argocd.argoproj.io/managed-by: orchestrator-gitops`).
+
 ## Running the Workflow
 Once the workflow's pods are ready, use the RHDH Orchestrator plugin to invoke the workflow.
 Monitor the Results pane and notifications for workflow execution progress.
