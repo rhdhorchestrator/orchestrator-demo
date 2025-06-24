@@ -30,7 +30,7 @@
           ]
         },
         "fetch:headers": {
-          "githubNameNotUsedJustShowing": "${{githubAuthApi.profileName}}"
+          "githubNameNotUsedJustShowing": "$${{githubAuthApi.profileName}}"
         }
       }
     },
