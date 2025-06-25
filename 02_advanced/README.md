@@ -141,6 +141,8 @@ oc -n $TARGET_NS patch secret "$WORKFLOW_NAME-secrets" \
   }"
 ```
 
+## Self-signed Certificate
+
 Due to HTTPS self-signed certificates, we have to use a proxy to ignore the Java certification error when interacting the OCP API.
 To do that, we deploy a proxy application that will forward the request (content and headers) to the OCP API:
 ```bash
