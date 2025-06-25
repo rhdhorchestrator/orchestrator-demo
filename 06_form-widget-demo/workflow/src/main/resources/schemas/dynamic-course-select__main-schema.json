@@ -30,12 +30,12 @@
           ],
           "additionalRequesterInfoAsObject": {
             "nickname": "$${{current.courseDetails.nickname}}",
-            "studentName": "$${current.studentName}",
+            "studentName": "$${{current.studentName}}",
             "myNestedObject": {
               "withArrayTemplate": "$${{current.complimentaryDrinks}}",
-              "withArray": ["myConstant", "$${current.studentName}"],
+              "withArray": ["myConstant", "$${{current.studentName}}"],
               "myNestedNestedObject": {
-                "studentName": "$${current.studentName}"
+                "studentName": "$${{current.studentName}}"
               }
             }
           }
