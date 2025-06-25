@@ -27,7 +27,18 @@
             "Mr./Mrs.",
             "$${{current.studentName}}",
             "as requested by $${{identityApi.displayName}} (logged in)"
-          ]
+          ],
+          "additionalRequesterInfoAsObject": {
+            "nickname": "$${{current.courseDetails.nickname}}",
+            "studentName": "$${{current.studentName}}",
+            "myNestedObject": {
+              "withArrayTemplate": "$${{current.complimentaryDrinks}}",
+              "withArray": ["myConstant", "$${{current.studentName}}"],
+              "myNestedNestedObject": {
+                "studentName": "$${{current.studentName}}"
+              }
+            }
+          }
         },
         "fetch:headers": {
           "githubNameNotUsedJustShowing": "$${{githubAuthApi.profileName}}"
@@ -117,13 +128,14 @@
           "courseName": "$${{current.courseName}}",
           "studentName": "$${{current.studentName}}",
           "justAPropertyOfAComplexObject": "$${{current.courseDetails.nickname}}",
-          "passingCourseDetailsAsComplexObject": "$${{current.courseDetails}}"
+          "passingCourseDetailsAsComplexObject": "$${{current.courseDetails}}",
+          "passingCourseDetailsAsComplexObjectWrappedInJsonString": "This text is followed by serialized JSON $${{current.courseDetails}}"
         }
       }
     },
     "sendCertificatesAs": {
-      "type": "object",
-      "title": "This title will never be displayed. Will be managed by the 'mySchemaUpdaterForCertificates'.",
+      "type": "string",
+      "title": "This title will never be displayed. Will be managed by the 'mySchemaUpdaterForCertificates'. Mind the type is aligned with the chunk provided by the HTTP endpoint.",
       "ui:widget": "hidden"
     },
     "mySchemaUpdater": {
