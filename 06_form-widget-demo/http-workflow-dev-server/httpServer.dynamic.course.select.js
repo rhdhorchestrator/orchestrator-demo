@@ -392,10 +392,9 @@ app.post('/validatedrinks', (req, res) => {
   logRequest(req);
 
   const field = req.body?.field;
-  const valueRaw = req.body?.value;
+  const value = req.body?.value;
 
   if (field === 'complimentaryDrinks') {
-    const value = JSON.parse(valueRaw);
     if (!Array.isArray(value)) {
       // any 4xx or 5xx is fine here
       res.status(422);
