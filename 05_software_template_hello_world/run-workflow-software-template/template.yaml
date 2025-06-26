@@ -1,7 +1,7 @@
 apiVersion: scaffolder.backstage.io/v1beta3
 kind: Template
 metadata:
-  name: software-template-workflow # matches the workflow ID, will be used by orchestrator:workflow:run
+  name: software-template-workflow
   title: A workflow that invokes software templates from Backstage
   description: A sample workflow to invoke software templates and check their progress
 
@@ -49,6 +49,7 @@ spec:
       name: Run workflow
       action: orchestrator:workflow:run
       input:
+        workflow_id: software-template-workflow # matches the workflow ID from sonataflow
         parameters: ${{ parameters }}
 
   output:
