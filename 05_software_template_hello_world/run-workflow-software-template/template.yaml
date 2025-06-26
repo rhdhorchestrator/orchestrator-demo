@@ -49,6 +49,7 @@ spec:
       name: Run workflow
       action: orchestrator:workflow:run
       input:
+        workflow_id: software-template-workflow
         parameters: ${{ parameters }}
 
   output:
