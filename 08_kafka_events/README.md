@@ -10,7 +10,9 @@ This guide explains how to integrate **Kafka messaging** into a **SonataFlow wor
 - Running unit tests to validate workflow execution
 - Deploying and testing the workflow in both local and Kubernetes environments
 
-By following this guide, you will learn how to configure Kafka to send and receive events, handle event‐driven workflow execution, and deploy the solution in a **scalable Kubernetes environment**.
+By following this guide, you will learn how to configure **Apache Kafka** to send and receive events, enable event-driven workflow execution, and deploy the entire solution within a **scalable Kubernetes environment**.
+
+For a deeper dive into the deployment process, refer to the accompanying [blog post](https://www.rhdhorchestrator.io/blog/hacking-build-process/).
 
 ---
 

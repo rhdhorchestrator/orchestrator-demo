@@ -55,13 +55,35 @@ See [demo recording](https://www.youtube.com/watch?v=ApDemFgkjqo).
   
   For guidance on creating a GitHub PAT, refer to [GitHub Docs: Creating a Personal Access Token](https://docs.github.com/en/github/authenticating-to-github/creating-a-personal-access-token).
 
-
-
-
 ---
 
-## Building and deploying the Workflow
+## Installation
+To install the workflow, apply the Kubernetes manifests located in the [`manifests`](./aap-db-deploy-workflow/manifests/) directory.  
+These manifests are ordered numerically to reflect their intended deployment sequence.
 
+> **Note**: Before deploying, ensure the following prerequisites are satisfied:
+> - The PostgreSQL secret references are correctly configured in the [SonataFlow Custom Resource](./aap-db-deploy-workflow/manifests/04-sonataflow_aap-db-deploy.yaml).
+> - All required secrets are defined in the [Kubernetes Secret resource](./aap-db-deploy-workflow/manifests/00-secret_aap-db-deploy-secrets.yaml).
+
+### Deploy the Workflow
+```bash
+oc apply -n sonataflow-infra -f ./aap-db-deploy-workflow/manifests
+```
+
+### Verify the Deployment
+To confirm the workflow was deployed successfully, run:
+```bash
+oc get sonataflow -n sonataflow-infra aap-db-deploy
+```
+
+Expected output:
+```
+NAME            PROFILE   VERSION   URL   READY   REASON
+aap-db-deploy   gitops    1.0             True
+```
+
+## Building the workflow and installing from built resources
+Sometimes a workflow may need to be modified—for example, to fix a bug or introduce new functionality. In such cases, it must be rebuilt.
 To build the workflow image and push it to the image registry, use the [./scripts/build.sh](../scripts/build.sh) script:
 ```bash
 ../scripts/build.sh --help
@@ -70,14 +92,14 @@ To build the workflow image and push it to the image registry, use the [./script
 Provide the desired values to the env variables and run the following command from the current directory, e.g.:
 
 1. Build the image and generate the manifests:
-```
+```bash
 WORKFLOW_IMAGE=<image:tag> # e.g. quay.io/orchestrator/demo-aap-db-deploy:latest
 ../scripts/build.sh --image=$WORKFLOW_IMAGE -w aap-db-deploy-workflow
 ```
 
 The manifests location will be displayed by the script.
 2. Push the image
-```
+```bash
 POCKER=$(command -v podman || command -v docker) "$@"
 $POCKER push <image>
 ```
@@ -93,13 +115,13 @@ The generated manifest files (in order of deployment) are:
 ```
 
 All the previous steps can be done together by running:
-```
+```bash
 ../scripts/build.sh --image=quay.io/orchestrator/demo-advanced --deploy
 ```
 
 ### Configuring Secrets
-Before deployment, ensure the correct values are set in 00-secret_aap-db-deploy.yaml.
-You can update the secret.properties file before generating the manifests or modify the generated secret file directly.
+Before deployment, ensure the correct values are set in [00-secret_aap-db-deploy.yaml](./aap-db-deploy-workflow/manifests/00-secret_aap-db-deploy-secrets.yaml).
+You can update the `secret.properties` file before generating the manifests or modify the generated secret file directly.
 | Environment Variable        | Description                                                                                   | Mandatory |
 |-----------------------------|-----------------------------------------------------------------------------------------------|-----------|
 | `RHDH_URL`                  | The Backstage URL                                                                             | ✅         |

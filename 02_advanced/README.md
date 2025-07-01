@@ -38,7 +38,32 @@ Application properties can be initialized from environment variables before runn
 ![Create OpenShift Project diagram](src/main/resources/create-ocp-project.svg)
 
 ## Installation
+To install the workflow, apply the Kubernetes manifests located in the [`manifests`](./manifests/) directory.  
+These manifests are ordered numerically to reflect their intended deployment sequence.
 
+> **Note**: Before deploying, ensure the following prerequisites are satisfied:
+> - The PostgreSQL secret references are correctly configured in the [SonataFlow Custom Resource](./manifests/04-sonataflow_create-ocp-project.yaml).
+> - All required secrets are defined in the [Kubernetes Secret resource](./manifests/00-secret_create-ocp-project-secrets.yaml).
+
+### Deploy the Workflow
+```bash
+oc apply -n sonataflow-infra -f ./02_advanced/manifests
+```
+
+### Verify the Deployment
+To confirm the workflow was deployed successfully, run:
+```bash
+oc get sonataflow -n sonataflow-infra create-ocp-project
+```
+
+Expected output:
+```
+NAME                 PROFILE   VERSION   URL   READY   REASON
+create-ocp-project   gitops    1.0             True
+```
+
+## Building the workflow
+Sometimes a workflow may need to be modified—for example, to fix a bug or introduce new functionality. In such cases, it must be rebuilt.
 To build the workflow image and push it to the image registry, use the [./scripts/build.sh](../scripts/build.sh) script:
 ```bash
 This script performs the following tasks in this specific order:
@@ -92,7 +117,7 @@ All the previous steps can be done together by running:
 ../scripts/build.sh --image=quay.io/orchestrator/demo-advanced --deploy
 ```
 
-Once the manifests are deployed, set the environements variables needed.
+Once the manifests are deployed, set the environments variables needed.
 
 To obtain an OpenShift API token, create a Service Account, assign permissions to it, and request a token:
 
