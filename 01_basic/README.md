@@ -18,7 +18,31 @@ Application properties can be initialized from environment variables before runn
 ![Basic diagram](src/main/resources/basic.svg)
 
 ## Installation
+To install the workflow, apply the Kubernetes manifests located in the [`manifests`](./manifests/) directory.  
+These manifests are organized and numbered according to their required deployment order.
 
+> **Note**: Before applying the manifests, ensure the PostgreSQL secret references are correctly configured in the [SonataFlow Custom Resource](./manifests/03-sonataflow_basic.yaml).
+
+### Deploy the Workflow
+
+```bash
+oc apply -n sonataflow-infra -f ./01_basic/manifests
+```
+
+### Verify the Deployment
+To confirm the workflow was deployed successfully, run:
+```bash
+oc get sonataflow -n sonataflow-infra basic
+```
+
+Expected output:
+```
+NAME    PROFILE   VERSION   URL   READY   REASON
+basic   gitops    1.0             True
+```
+
+## Building the workflow
+Sometimes a workflow may need to be modified—for example, to fix a bug or introduce new functionality. In such cases, it must be rebuilt.
 To build the workflow image and push it to the image registry, use the [./scripts/build.sh](../scripts/build.sh) script:
 ```bash
 This script performs the following tasks in this specific order:
@@ -54,13 +78,13 @@ Use the scripts:
 
 The manifests location will be displayed by the script.
 2. Push the image
-```
+```bash
 POCKER=$(command -v podman || command -v docker) "$@"
 $POCKER push <image>
 ```
 
 3. Apply the manifests:
-```
+```bash
 TARGET_NS=sonataflow-infra
 oc -n ${TARGET_NS} apply -f <path to manifests folder>/00-secret_*.yaml
 oc -n ${TARGET_NS} apply -f <path to manifests folder>/02-configmap_*-props.yaml
@@ -68,12 +92,12 @@ oc -n ${TARGET_NS} apply -f <path to manifests folder>/01-sonataflow_*.yaml
 ```
 
 All the previous steps can be done together by running:
-```
+```bash
 ../scripts/build.sh --image=quay.io/orchestrator/demo-basic --deploy
 ```
 
-Once the manifests are deployed, set the environements variables needed:
-```
+Once the manifests are deployed, set the environments variables needed:
+```bash
 TARGET_NS=sonataflow-infra
 WORKFLOW_NAME=basic
 BACKSTAGE_NOTIFICATIONS_URL=http://backstage-backstage.rhdh-operator

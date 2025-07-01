@@ -1,35 +1,70 @@
-# Software Template workflow
-This projects aims to demonstate how a software template from Backstage can be use to invoke an Orchestrator workflow.
-To make things a bit more interesting, the orchestrator workflow will be used to launch the hello-world software template.
+# Software Template Workflow
 
-To keep the workflow simple, there is no use of the notifications plugins, so all results should be viewed from the Orchestrator plugin.
+This project demonstrates how a Backstage software template can be used to invoke an Orchestrator workflow.  
+To make the example more engaging, the Orchestrator workflow will launch the `hello-world` software template.
 
-# Prerequisites
-* RHDH 1.5 and Orchestrator 1.5
-* Register the software template from ./hello-world-software-template to RHDH
+> **Note**: For simplicity, this workflow does not use the notifications plugin.  
+> All execution results should be viewed directly in the **Orchestrator** plugin within RHDH.
 
-## Workflow application configuration
-The workflow invokes a software template that will be create a repository in GitHub with sample code.
-The GitHub organization, repository, service name and component owner will be provided as input parameters.
+## Prerequisites
 
-Application properties can be initialized from environment variables before running the application:
+- Red Hat Developer Hub (RHDH) version >= 1.6
+- Orchestrator plugin version >= 1.6
+- The `hello-world` software template must be registered in RHDH.  
+  The template is located in: [`./hello-world-software-template`](./hello-world-software-template)
+
+## Workflow Application Configuration
+
+This workflow triggers a software template that creates a GitHub repository pre-populated with sample code.  
+The following parameters must be provided as input:
+
+- **GitHub Organization** – where the repository will be created
+- **Repository Name** – name of the new repository
+- **Service Name** – name of the service being created, used as the name of the component in RHDH
+- **Component Owner** – user or team responsible for the component (e.g. user:default/guest)
+
+Ensure these parameters are correctly supplied when executing the workflow via the Orchestrator plugin interface.
+
+### Configuring Secrets
+Before deployment, ensure the correct values are set in [00-secret_software-template-workflow-secrets.yaml](./workflow/manifests/00-secret_software-template-workflow-secrets.yaml)
+You can update the `secret.properties` file before generating the manifests or modify the generated secret file directly.
 
 | Environment variable  | Description | Mandatory | Default value |
 |-----------------------|-------------|-----------|---------------|
 | `RHDH_URL`      | The backstage server URL for notifications | ✅ | |
 | `SCAFFOLDER_BEARER_TOKEN`      | The authorization bearer token to use to send notifications | ✅ | |
 
-## Input
-- `Organization Name` [required] - the GitHub organizaion of the target reposiory
-- `Repository Name` [required] - the GitHub repository name under the specified organization
-- `Service Name` [required] - the name of the service and also used as the name of the component that will be registered in RHDH catalog.
-- `Owner` [required] - Backstage owner of the created service and the component (e.g. user:default/guest)
 
 ## Workflow diagram
 ![Workflow diagram](workflow/src/main/resources/workflow.svg)
 
 ## Installation
+To install the workflow, apply the Kubernetes manifests located in the [`manifests`](./workflow/manifests/) directory.  
+These manifests are ordered numerically to reflect their intended deployment sequence.
 
+> **Note**: Before deploying, ensure the following prerequisites are satisfied:
+> - The PostgreSQL secret references are correctly configured in the [SonataFlow Custom Resource](./workflow/manifests/04-sonataflow_software-template-workflow.yaml).
+> - All required secrets are defined in the [Kubernetes Secret resource](./workflow/manifests/00-secret_software-template-workflow-secrets.yaml).
+
+### Deploy the Workflow
+```bash
+oc apply -n sonataflow-infra -f ./workflow/manifests
+```
+
+### Verify the Deployment
+To confirm the workflow was deployed successfully, run:
+```bash
+oc get sonataflow -n sonataflow-infra software-template-workflow
+```
+
+Expected output:
+```
+NAME                         PROFILE   VERSION   URL   READY   REASON
+software-template-workflow   gitops    1.0             True
+```
+
+## Building the workflow and installing from built resources
+Sometimes a workflow may need to be modified—for example, to fix a bug or introduce new functionality. In such cases, it must be rebuilt.
 To build the workflow image and push it to the image registry, use the [./scripts/build.sh](../scripts/build.sh) script:
 ```bash
 This script performs the following tasks in this specific order:

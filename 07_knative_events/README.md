@@ -23,6 +23,31 @@ No needed input
 ![events diagram](src/main/resources/events.svg)
 
 ## Installation
+To install the workflow, apply the Kubernetes manifests located in the [`manifests`](./manifests/) directory.  
+These manifests are ordered numerically to reflect their intended deployment sequence.
+
+> **Note**: Before deploying, ensure the following prerequisites are satisfied:
+> - The PostgreSQL secret references are correctly configured in the [SonataFlow Custom Resource](./manifests/03-sonataflow_events.yaml).
+
+### Deploy the Workflow
+```bash
+oc apply -n sonataflow-infra -f ./manifests
+```
+
+### Verify the Deployment
+To confirm the workflow was deployed successfully, run:
+```bash
+oc get sonataflow -n sonataflow-infra events
+```
+
+Expected output:
+```
+NAME     PROFILE   VERSION   URL   READY   REASON
+events   gitops    1.0             True
+```
+
+## Building the workflow
+Sometimes a workflow may need to be modified—for example, to fix a bug or introduce new functionality. In such cases, it must be rebuilt.
 To build the workflow image and push it to the image registry, use the [./scripts/build.sh](../scripts/build.sh) script:
 ```bash
 This script performs the following tasks in this specific order:
