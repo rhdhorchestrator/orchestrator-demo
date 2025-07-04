@@ -343,16 +343,17 @@ app.get('/suggested-courses', (req, res) => {
 app.get('/drinks', (req, res) => {
   logRequest(req);
 
-  const allDrinks = [
-    'water',
-    'sparkling water',
-    'water with lemon',
-    'water on rocks',
-    'prohibited drink',
-  ];
-
   const response = {
-    allDrinks,
+    myWarehouse: {
+      food: {},
+      drinks: [
+        {"name": "water", "price": 10},
+        {"name": "sparkling water", "price": 15},
+        {"name": "water with lemon", "price": 20},
+        {"name": "water on rocks", "price": 25},
+        {"name": "prohibited drink", "price": 30},
+      ]
+    },
   }
 
   // HTTP 200

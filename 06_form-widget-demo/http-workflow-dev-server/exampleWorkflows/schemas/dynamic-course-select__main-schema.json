@@ -84,7 +84,8 @@
       "ui:widget": "ActiveMultiSelect",
       "ui:props": {
         "fetch:url": "$${{backend.baseUrl}}/api/proxy/mytesthttpserver/drinks",
-        "fetch:response:autocomplete": "allDrinks",
+        "devonlycomment": "Mind the [] at the end of the fetch:response:autocomplete selector - it is required to return an array of strings",
+        "fetch:response:autocomplete": "myWarehouse.drinks.name[]",
         "validate:url": "$${{backend.baseUrl}}/api/proxy/mytesthttpserver/validatedrinks",
         "validate:method": "POST",
         "validate:body": {
@@ -102,7 +103,7 @@
       "ui:widget": "ActiveMultiSelect",
       "ui:props": {
         "fetch:url": "$${{backend.baseUrl}}/api/proxy/mytesthttpserver/mascots?studentname=$${{current.studentName}}",
-        "fetch:response:autocomplete": "allMascots",
+        "fetch:response:autocomplete": "allMascots[]",
         "devonlycomment": "First two items are pre-selected and the user can not delete them (are mandatory)",
         "fetch:response:mandatory": "allMascots[[0..1]]"
       }
