@@ -4,8 +4,8 @@ This directory contains the necessary resources to run the Form Widget Demo. Thi
 
 Please note the two subdirectories:
 
-1. dynamic-course-setup: 
-This directory contains a [Helm Chart](https://helm.sh/) to install the demo resources.
+1. deploy: 
+This directory contains the manifests to install the demo resources.
 
 1. workflow
 This directory contains the source code for a serverless workflow project. This workflow can be build and deployed to showcase the new plugin demonstrated. *There is no need to build this project manually, as the aforementioned Helm Chart will suffice.* For instructions to do so, please see the [workflow README](workflow/README.md)
@@ -57,28 +57,39 @@ The following chart will deploy:
 ### Additional setup
 
 You must add [proxy configurations](https://backstage.io/docs/plugins/proxying) to the RHDH appConfig settings:
-
 ```yaml
 proxy:
   reviveConsumedRequestBodies: true
   endpoints:
     '/mytesthttpserver':
-      target: 'http://mytesthttpservice:80'
+      target: 'http://mytesthttpservice.sonataflow-infra.svc.cluster.local:80'
       allowedMethods: ['GET', 'POST']
       allowedHeaders: ['test-header']
 ```
 
 > [!NOTE]
-> The application properties that are passed to the workflow in [this config map](/06_form-widget-demo/dynamic-course-setup/templates/01-configmap_dynamic-course-select-props.yaml) are referencing the ones already passed n the build stage. To apply changes, please rebuild the workflow image with the steps provided.
-
-> Verify the PostgreSQL secret and service are set correctly in [values.yaml](./dynamic-course-setup/values.yaml) before running the command.
-
-Run the following command to install the chart:
-```bash
-helm install <release-name> dynamic-course-setup
+> Verify the PostgreSQL secret and service are set correctly in the workflow [custom resource](./deploy/03-sonataflow_dynamic-course-select.yaml) before running the command.
+If RHDH installed using the chart, the `persistence` section in that CR might need to be changed to:
+```yaml
+  persistence:
+    postgresql:
+      secretRef:
+        name: rhdh-postgresql-svcbind-postgres
+        userKey: username
+        passwordKey: password
+      serviceRef:
+        name: rhdh-postgresql
+        port: 5432
+        databaseName: sonataflow
+        databaseSchema: dynamic-course-select
 ```
 
-After installing the Helm Chart, a new workflow should be available in the Orchestrator plugin.
+Run the following command to install the demo resources:
+```bash
+oc apply -n sonataflow-infra -f ./deploy
+```
+
+After applying the resources, a new workflow should be available in the Orchestrator plugin.
 
 ---
 
@@ -87,10 +98,11 @@ After installing the Helm Chart, a new workflow should be available in the Orche
 To modify the http server that is used by the workflow in the demo, you can do so by building the container image from the project [here](http-workflow-dev-server).
 
 Run the following commands: 
-```
+```bash
+cd http-workflow-dev-server
 yarn install 
-podman build -t <container-image-name>:<tag> http-workflow-dev-server
-podman push <container-image-name>:<tag>
+podman build --platform=linux/amd64 -t quay.io/orchestrator/dynamic-course-demo-server:latest .
+podman push quay.io/orchestrator/dynamic-course-demo-server:latest
 ```
 
 ---

@@ -2,7 +2,7 @@
 
 This directory contains a quarkus project that builds a serverless workflow that is used for the form widget demo.
 
-To use the workflow, *you are not expected to build it from the source code*. Instead, please use the [Helm Chart](../dynamic-course-setup/Chart.yaml) provided to deploy all workflow resources and related demo resources.
+To use the workflow, *you are not expected to build it from the source code*. Instead, please deploy the manifests from [here](../deploy/) to deploy all workflow resources and related demo resources.
 
 ## Building From Source
 
