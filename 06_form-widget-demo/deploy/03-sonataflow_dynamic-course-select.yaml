@@ -11,7 +11,6 @@ metadata:
     app: dynamic-course-select
     sonataflow.org/workflow-app: dynamic-course-select
   name: dynamic-course-select
-  namespace: {{ .Release.Namespace }}
 spec:
   flow:
     dataInputSchema:
@@ -38,7 +37,7 @@ spec:
         type: operation
   podTemplate:
     container:
-      image: quay.io/orchestrator/dynamic-course-demo-workflow
+      image: quay.io/orchestrator/dynamic-course-demo-server:latest
       resources: {}
   resources:
     configMaps:
@@ -48,13 +47,13 @@ spec:
   persistence:
     postgresql:
       secretRef:
-        name: {{ .Values.postgresql.secretRef.name }}
-        userKey: {{ .Values.postgresql.secretRef.userKey }}
-        passwordKey: {{ .Values.postgresql.secretRef.passwordKey }}
+        name: sonataflow-psql-postgresql
+        userKey: postgres-username
+        passwordKey: postgres-password
       serviceRef:
-        name: {{ .Values.postgresql.serviceRef.name }}
-        port: {{ .Values.postgresql.serviceRef.port }}
-        databaseName: {{ .Values.postgresql.serviceRef.databaseName }}
+        name: sonataflow-psql-postgresql
+        port: 5432
+        databaseName: sonataflow
         databaseSchema: dynamic-course-select
 status:
   address: {}
