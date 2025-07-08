@@ -37,7 +37,7 @@ spec:
         type: operation
   podTemplate:
     container:
-      image: quay.io/orchestrator/dynamic-course-demo-workflow
+      image: quay.io/orchestrator/dynamic-course-demo-server:latest
       resources: {}
   resources:
     configMaps:

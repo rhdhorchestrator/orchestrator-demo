@@ -42,7 +42,8 @@ This Helm Chart will set up some necessary resources to use the dynamic-course-w
 ### Prerequisites
 
 * RHDH >=1.6 and Orchestrator >=1.6
-> [!NOTE]
+> **NOTE**
+>
 > Currently, to install Orchestrator with RHDH 1.6 is by installing the RHDH [Helm Chart](https://github.com/rhdhorchestrator/rhdh-chart).
 
 ### Resources list
@@ -56,7 +57,11 @@ The following chart will deploy:
 
 ### Additional setup
 
-You must add [proxy configurations](https://backstage.io/docs/plugins/proxying) to the RHDH appConfig settings:
+To enable proxying to the workflow service, you must configure the `appConfig` of your RHDH instance as described in [Backstage proxy configurations](https://backstage.io/docs/plugins/proxying):
+> **NOTE**
+>
+> If the service was deployed to a namespace other than `sonataflow-infra`, update the `target` field accordingly to reflect the correct service name and namespace.
+
 ```yaml
 proxy:
   reviveConsumedRequestBodies: true
@@ -67,9 +72,10 @@ proxy:
       allowedHeaders: ['test-header']
 ```
 
-> [!NOTE]
+> **NOTE**
+>
 > Verify the PostgreSQL secret and service are set correctly in the workflow [custom resource](./deploy/03-sonataflow_dynamic-course-select.yaml) before running the command.
-If RHDH installed using the chart, the `persistence` section in that CR might need to be changed to:
+If RHDH installed using [RHDH chart](https://github.com/redhat-developer/rhdh-chart), the `persistence` section in that CR might need to be changed to:
 ```yaml
   persistence:
     postgresql:
