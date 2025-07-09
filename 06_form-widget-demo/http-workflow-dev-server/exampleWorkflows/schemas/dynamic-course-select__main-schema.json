@@ -3,6 +3,13 @@
   "title": "Data Input Schema",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
+  "ui:order": [
+    "studentName",
+    "courseName",
+    "courseDetails",
+    "suggestedCourses",
+    "*"
+  ],
   "properties": {
     "studentName": {
       "type": "string",

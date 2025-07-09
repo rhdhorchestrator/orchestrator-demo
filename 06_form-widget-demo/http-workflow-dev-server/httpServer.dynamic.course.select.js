@@ -86,6 +86,8 @@ app.get('/coursedetailsschema', (req, res) => {
     return;
   }
 
+  const uiOrder = ['nickname', 'room'];
+
   const fields = {
     room: {
       type: 'string',
@@ -122,6 +124,7 @@ app.get('/coursedetailsschema', (req, res) => {
       title: 'Receive a certificate',
       'ui:widget': 'radio',
     };
+    uiOrder.push('requestCertificate');
   }
 
   const courseDetailsSchema = {
@@ -130,6 +133,7 @@ app.get('/coursedetailsschema', (req, res) => {
       type: 'object',
       title: `Course details for "${courseName}"`,
       properties: fields,
+      'ui:order': uiOrder,
     },
   };
 
