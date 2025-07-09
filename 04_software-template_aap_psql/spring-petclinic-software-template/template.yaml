@@ -267,7 +267,7 @@ spec:
           port: 8080
           repository_host: github.com
           deployment_name: spring-petclinic-template
-          image: quay.io/${{ secrets.imageNamespace }}/${{ parameters.repoName }}
+          image: quay.io/${{ parameters.imageNamespace }}/${{ parameters.repoName }}
           tag: latest
           user: ${{ parameters.owner }}
         targetPath: ./tenant-gitops
