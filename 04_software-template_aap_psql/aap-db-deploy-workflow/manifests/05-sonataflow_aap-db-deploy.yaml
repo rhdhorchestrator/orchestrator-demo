@@ -11,7 +11,11 @@ metadata:
   creationTimestamp: null
   labels:
     app: aap-db-deploy
+    app.kubernetes.io/component: serverless-workflow
+    app.kubernetes.io/managed-by: sonataflow-operator
+    app.kubernetes.io/name: aap-db-deploy
     sonataflow.org/workflow-app: aap-db-deploy
+    sonataflow.org/workflow-namespace: ""
   name: aap-db-deploy
 spec:
   flow:
@@ -20,6 +24,9 @@ spec:
     dataInputSchema:
       failOnValidationErrors: true
       schema: schemas/aap-db-deploy-input-schema.json
+    errors:
+      - code: "404"
+        name: namespaceNotFound
     functions:
       - name: LaunchSoftwareTemplate
         operation: specs/scaffolder-openapi.yaml#createTask
@@ -42,8 +49,14 @@ spec:
       - name: createArgoprojIoV1alpha1NamespacedApplication
         operation: specs/argocd-openapi.yaml#createArgoprojIoV1alpha1NamespacedApplication
         type: rest
-      - name: readArgoprojIoV1alpha1NamespacedApplication
-        operation: specs/argocd-openapi.yaml#readArgoprojIoV1alpha1NamespacedApplication
+      - name: createProjectRequestOpenshiftIoV1Project
+        operation: specs/ocp-openapi.yaml#createProjectRequestOpenshiftIoV1Project
+        type: rest
+      - name: readProjectOpenshiftIoV1Project
+        operation: specs/ocp-openapi.yaml#readProjectOpenshiftIoV1Project
+        type: rest
+      - name: patchCoreV1Namespace
+        operation: specs/ocp-openapi.yaml#patchCoreV1Namespace
         type: rest
       - name: createNotification
         operation: notifications#createNotification
@@ -51,9 +64,6 @@ spec:
       - name: logInfo
         operation: sysout:INFO
         type: custom
-      - name: increaseApplicationStatusSyncedRetries
-        operation: .applicationStatusSyncedRetries=.applicationStatusSyncedRetries + 1
-        type: expression
       - name: templateSuccessResult
         operation: '{ "result": { "outputs":[ { "key":"Component in Catalog", "value": $SECRET.rhdh_url + "/catalog/default/component/" + .component.repoName, "format":"link" }] } }'
         type: expression
@@ -165,7 +175,7 @@ spec:
               refName: createNotification
         name: SendTaskCompletedNotification
         transition:
-          nextState: LaunchAAPJob
+          nextState: CheckNamespaceExists
         type: operation
       - actionMode: sequential
         actions:
@@ -196,6 +206,144 @@ spec:
       - actionMode: sequential
         actions:
           - actionDataFilter:
+              useResults: true
+            functionRef:
+              arguments:
+                message: '"Checking if namespace " + $SECRET.target_namespace + " exists"'
+              invoke: sync
+              refName: logInfo
+          - actionDataFilter:
+              toStateData: .existingNamespace
+              useResults: true
+            functionRef:
+              arguments:
+                name: $SECRET.target_namespace
+              invoke: sync
+              refName: readProjectOpenshiftIoV1Project
+        name: CheckNamespaceExists
+        onErrors:
+          - errorRef: namespaceNotFound
+            transition:
+              nextState: CreateNamespace
+        transition:
+          nextState: EvaluateNamespaceExists
+        type: operation
+      - dataConditions:
+          - condition: .existingNamespace != null and .existingNamespace.metadata.name == $SECRET.target_namespace
+            transition:
+              nextState: NamespaceExistsNotification
+        defaultCondition:
+          transition:
+            nextState: CreateNamespace
+        name: EvaluateNamespaceExists
+        type: switch
+      - actionMode: sequential
+        actions:
+          - actionDataFilter:
+              useResults: true
+            functionRef:
+              arguments:
+                message: '"Namespace " + $SECRET.target_namespace + " already exists, patching with ArgoCD label"'
+              invoke: sync
+              refName: logInfo
+          - actionDataFilter:
+              useResults: true
+            functionRef:
+              arguments:
+                payload:
+                  description: '"Namespace " + $SECRET.target_namespace + " already exists and has been patched with ArgoCD management label."'
+                  severity: normal
+                  title: '"AAP DB Deploy workflow " + $WORKFLOW.instanceId + " updated existing namespace."'
+                  topic: AAP DB Deploy
+                recipients:
+                  entityRef: .aap.recipients
+                  type: entity
+              invoke: sync
+              refName: createNotification
+        name: NamespaceExistsNotification
+        transition:
+          nextState: PatchNamespace
+        type: operation
+      - actionMode: sequential
+        actions:
+          - actionDataFilter:
+              useResults: true
+            functionRef:
+              arguments:
+                message: '"Creating namespace " + $SECRET.target_namespace'
+              invoke: sync
+              refName: logInfo
+          - actionDataFilter:
+              toStateData: .createdNamespace
+              useResults: true
+            functionRef:
+              arguments:
+                kind: ProjectRequest
+                metadata:
+                  name: $SECRET.target_namespace
+                spec:
+                  finalizers:
+                    - kubernetes
+              invoke: sync
+              refName: createProjectRequestOpenshiftIoV1Project
+        name: CreateNamespace
+        transition:
+          nextState: NamespaceCreatedNotification
+        type: operation
+      - actionMode: sequential
+        actions:
+          - actionDataFilter:
+              useResults: true
+            functionRef:
+              arguments:
+                message: '"Adding ArgoCD label to namespace " + $SECRET.target_namespace'
+              invoke: sync
+              refName: logInfo
+          - actionDataFilter:
+              toStateData: .patchedNamespace
+              useResults: true
+            functionRef:
+              arguments:
+                metadata:
+                  labels:
+                    argocd.argoproj.io/managed-by: orchestrator-gitops
+                name: $SECRET.target_namespace
+              invoke: sync
+              refName: patchCoreV1Namespace
+        name: PatchNamespace
+        transition:
+          nextState: LaunchAAPJob
+        type: operation
+      - actionMode: sequential
+        actions:
+          - actionDataFilter:
+              useResults: true
+            functionRef:
+              arguments:
+                message: '"Namespace " + $SECRET.target_namespace + " created successfully"'
+              invoke: sync
+              refName: logInfo
+          - actionDataFilter:
+              useResults: true
+            functionRef:
+              arguments:
+                payload:
+                  description: '"Namespace " + $SECRET.target_namespace + " created successfully with ArgoCD management label."'
+                  severity: normal
+                  title: '"AAP DB Deploy workflow " + $WORKFLOW.instanceId + " created namespace."'
+                  topic: AAP DB Deploy
+                recipients:
+                  entityRef: .aap.recipients
+                  type: entity
+              invoke: sync
+              refName: createNotification
+        name: NamespaceCreatedNotification
+        transition:
+          nextState: PatchNamespace
+        type: operation
+      - actionMode: sequential
+        actions:
+          - actionDataFilter:
               toStateData: .launchedJob
               useResults: true
             functionRef:
@@ -209,7 +357,7 @@ spec:
               refName: LaunchAAPJob
         name: LaunchAAPJob
         stateDataFilter:
-          output: '.launchedJob += { outputUrl: $SECRET.app_url +  "/#/jobs/playbook/" + (.launchedJob.id|tostring) + "/output" }'
+          output: '.launchedJob += { outputUrl: $SECRET.app_url +  "/execution/jobs/playbook/" + (.launchedJob.id|tostring) + "/output" }'
         transition:
           nextState: GetAAPJob
         type: operation
@@ -457,11 +605,94 @@ spec:
         type: operation
   podTemplate:
     container:
+      env:
+        - name: TARGET_ARGOCD_NAMESPACE
+          valueFrom:
+            secretKeyRef:
+              key: TARGET_ARGOCD_NAMESPACE
+              name: aap-db-deploy-secrets
+        - name: RHDH_URL
+          valueFrom:
+            secretKeyRef:
+              key: RHDH_URL
+              name: aap-db-deploy-secrets
+        - name: NOTIFICATIONS_BEARER_TOKEN
+          valueFrom:
+            secretKeyRef:
+              key: NOTIFICATIONS_BEARER_TOKEN
+              name: aap-db-deploy-secrets
+        - name: SOFTWARE_TEMPLATE_REF
+          valueFrom:
+            secretKeyRef:
+              key: SOFTWARE_TEMPLATE_REF
+              name: aap-db-deploy-secrets
+        - name: QUAY_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: QUAY_PASSWORD
+              name: aap-db-deploy-secrets
+        - name: AAP_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: AAP_USERNAME
+              name: aap-db-deploy-secrets
+        - name: ARGOCD_OCP_API_URL
+          valueFrom:
+            secretKeyRef:
+              key: ARGOCD_OCP_API_URL
+              name: aap-db-deploy-secrets
+        - name: TARGET_ARGOCD_PROJECT
+          valueFrom:
+            secretKeyRef:
+              key: TARGET_ARGOCD_PROJECT
+              name: aap-db-deploy-secrets
+        - name: SCAFFOLDER_BEARER_TOKEN
+          valueFrom:
+            secretKeyRef:
+              key: SCAFFOLDER_BEARER_TOKEN
+              name: aap-db-deploy-secrets
+        - name: AAP_TEMPLATE_ID
+          valueFrom:
+            secretKeyRef:
+              key: AAP_TEMPLATE_ID
+              name: aap-db-deploy-secrets
+        - name: GITHUB_TOKEN
+          valueFrom:
+            secretKeyRef:
+              key: GITHUB_TOKEN
+              name: aap-db-deploy-secrets
+        - name: ARGOCD_OCP_API_TOKEN
+          valueFrom:
+            secretKeyRef:
+              key: ARGOCD_OCP_API_TOKEN
+              name: aap-db-deploy-secrets
+        - name: TARGET_APPLICATION_PROJECT
+          valueFrom:
+            secretKeyRef:
+              key: TARGET_APPLICATION_PROJECT
+              name: aap-db-deploy-secrets
+        - name: AAP_URL
+          valueFrom:
+            secretKeyRef:
+              key: AAP_URL
+              name: aap-db-deploy-secrets
+        - name: AAP_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: AAP_PASSWORD
+              name: aap-db-deploy-secrets
+        - name: QUAY_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: QUAY_USERNAME
+              name: aap-db-deploy-secrets
+        - name: RHDH_INTERNAL_SVC
+          valueFrom:
+            secretKeyRef:
+              key: RHDH_INTERNAL_SVC
+              name: aap-db-deploy-secrets
       image: quay.io/orchestrator/demo-aap-db-deploy:latest
       resources: {}
-      envFrom:
-        - secretRef:
-            name: aap-db-deploy-secrets
   resources:
     configMaps:
       - configMap:

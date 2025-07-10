@@ -139,20 +139,6 @@ function gen_manifests {
     local sonataflow_cr
     sonataflow_cr="$(findw "${args["manifests-directory"]}" -type f -name "*-sonataflow_${workflow_id}.yaml")"
 
-    if [[ -f "${res_dir_path}/secret.properties" ]]; then
-        yq --inplace ".spec.podTemplate.container.envFrom=[{\"secretRef\": { \"name\": \"${workflow_id}-secrets\"}}]" "${sonataflow_cr}"
-        create_secret_args=(
-            --from-env-file="$res_dir_path/secret.properties"
-            --dry-run=client
-            -o=yaml
-        )
-        if [[ -z "${args["namespace"]}" ]]; then
-            create_secret_args+=(--namespace="${args["namespace"]}")
-        fi
-        kubectl create secret generic "${workflow_id}-secrets" "${create_secret_args[@]}" > "${args["manifests-directory"]}/00-secret_${workflow_id}-secrets.yaml"
-        log_info "Generated k8s secret for the workflow"
-     fi
-
     if [[ -z "${args["no-persistence"]:-}" ]]; then
         yq --inplace ".spec |= (
             . + {

@@ -124,7 +124,8 @@ Before deployment, ensure the correct values are set in [00-secret_aap-db-deploy
 You can update the `secret.properties` file before generating the manifests or modify the generated secret file directly.
 | Environment Variable        | Description                                                                                   | Mandatory |
 |-----------------------------|-----------------------------------------------------------------------------------------------|-----------|
-| `RHDH_URL`                  | The Backstage URL                                                                             | ✅         |
+| `RHDH_URL`                  | The Backstage route URL                                                                       | ✅         |
+| `RHDH_INTERNAL_SVC`         | The Backstage internal service URL                                                            | ✅         |
 | `NOTIFICATIONS_BEARER_TOKEN`| The bearer token for the Backstage Notifications API                                          | ✅         |
 | `SCAFFOLDER_BEARER_TOKEN`   | The bearer token for the Backstage Scaffolder API                                             | ✅         |
 | `SOFTWARE_TEMPLATE_REF`     | The reference to the software template used in the workflow                                   | ✅         |
