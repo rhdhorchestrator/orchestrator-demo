@@ -9,6 +9,9 @@ annotations:
   - "workflow-type/infrastructure"
 dataInputSchema: schemas/aap-db-deploy-input-schema.json
 start: LaunchSoftwareTemplate
+errors:
+  - name: namespaceNotFound
+    code: "404"
 extensions:
   - extensionid: workflow-uri-definitions
     definitions:
@@ -28,16 +31,17 @@ functions:
     operation: specs/github-openapi.yaml#actions/list-workflow-runs
   - name: createArgoprojIoV1alpha1NamespacedApplication
     operation: specs/argocd-openapi.yaml#createArgoprojIoV1alpha1NamespacedApplication
-  - name: readArgoprojIoV1alpha1NamespacedApplication
-    operation: specs/argocd-openapi.yaml#readArgoprojIoV1alpha1NamespacedApplication
+  - name: createProjectRequestOpenshiftIoV1Project
+    operation: specs/ocp-openapi.yaml#createProjectRequestOpenshiftIoV1Project
+  - name: readProjectOpenshiftIoV1Project
+    operation: specs/ocp-openapi.yaml#readProjectOpenshiftIoV1Project
+  - name: patchCoreV1Namespace
+    operation: specs/ocp-openapi.yaml#patchCoreV1Namespace
   - name: createNotification
     operation: notifications#createNotification
   - name: logInfo
     type: custom
     operation: "sysout:INFO"
-  - name: increaseApplicationStatusSyncedRetries
-    type: expression
-    operation: ".applicationStatusSyncedRetries=.applicationStatusSyncedRetries + 1"
   - name: templateSuccessResult
     type: expression
     operation: '{
@@ -177,7 +181,7 @@ states:
               topic: "AAP DB Deploy"
               link: '$SECRET.rhdh_url + "/catalog/default/component/" + .component.repoName'
               severity: "normal"
-    transition: LaunchAAPJob
+    transition: CheckNamespaceExists
   - name: SendTaskFailureNotification
     type: operation
     actions:
@@ -196,6 +200,105 @@ states:
               topic: "AAP DB Deploy"
               severity: "high"
     end: true
+  - name: CheckNamespaceExists
+    type: operation
+    actions:
+      - functionRef:
+          refName: logInfo
+          arguments:
+            message: '"Checking if namespace " + $SECRET.target_namespace + " exists"'
+      - functionRef:
+          refName: readProjectOpenshiftIoV1Project
+          arguments:
+            name: $SECRET.target_namespace
+        actionDataFilter:
+          toStateData: .existingNamespace
+    onErrors:
+      - errorRef: namespaceNotFound
+        transition: CreateNamespace
+    transition: EvaluateNamespaceExists
+  - name: EvaluateNamespaceExists
+    type: switch
+    dataConditions:
+      - condition: '.existingNamespace != null and .existingNamespace.metadata.name == $SECRET.target_namespace'
+        transition:
+          nextState: NamespaceExistsNotification
+    defaultCondition:
+      transition: CreateNamespace
+  - name: NamespaceExistsNotification
+    type: operation
+    actions:
+      - functionRef:
+          refName: logInfo
+          arguments:
+            message: '"Namespace " + $SECRET.target_namespace + " already exists, patching with ArgoCD label"'
+      - functionRef:
+          refName: createNotification
+          arguments:
+            recipients:
+              type: "entity"
+              entityRef: .aap.recipients
+            payload:
+              title: '"AAP DB Deploy workflow " + $WORKFLOW.instanceId + " updated existing namespace."'
+              description: '"Namespace " + $SECRET.target_namespace + " already exists and has been patched with ArgoCD management label."'
+              topic: "AAP DB Deploy"
+              severity: "normal"
+    transition: PatchNamespace
+  - name: CreateNamespace
+    type: operation
+    actions:
+      - functionRef:
+          refName: logInfo
+          arguments:
+            message: '"Creating namespace " + $SECRET.target_namespace'
+      - functionRef:
+          refName: createProjectRequestOpenshiftIoV1Project
+          arguments:
+            kind: ProjectRequest
+            metadata:
+              name: $SECRET.target_namespace
+            spec:
+              finalizers:
+                - kubernetes
+        actionDataFilter:
+          toStateData: .createdNamespace
+    transition: NamespaceCreatedNotification
+  - name: PatchNamespace
+    type: operation
+    actions:
+      - functionRef:
+          refName: logInfo
+          arguments:
+            message: '"Adding ArgoCD label to namespace " + $SECRET.target_namespace'
+      - functionRef:
+          refName: patchCoreV1Namespace
+          arguments:
+            name: $SECRET.target_namespace
+            metadata:
+              labels:
+                argocd.argoproj.io/managed-by: orchestrator-gitops
+        actionDataFilter:
+          toStateData: .patchedNamespace
+    transition: LaunchAAPJob
+  - name: NamespaceCreatedNotification
+    type: operation
+    actions:
+      - functionRef:
+          refName: logInfo
+          arguments:
+            message: '"Namespace " + $SECRET.target_namespace + " created successfully"'
+      - functionRef:
+          refName: createNotification
+          arguments:
+            recipients:
+              type: "entity"
+              entityRef: .aap.recipients
+            payload:
+              title: '"AAP DB Deploy workflow " + $WORKFLOW.instanceId + " created namespace."'
+              description: '"Namespace " + $SECRET.target_namespace + " created successfully with ArgoCD management label."'
+              topic: "AAP DB Deploy"
+              severity: "normal"
+    transition: PatchNamespace
   - name: LaunchAAPJob
     type: operation
     actions:
@@ -210,7 +313,7 @@ states:
         actionDataFilter:
           toStateData: .launchedJob
     stateDataFilter:
-      output: '.launchedJob += { outputUrl: $SECRET.app_url +  "/#/jobs/playbook/" + (.launchedJob.id|tostring) + "/output" }'
+      output: '.launchedJob += { outputUrl: $SECRET.app_url +  "/execution/jobs/playbook/" + (.launchedJob.id|tostring) + "/output" }'
     transition: GetAAPJob
   - name: GetAAPJob
     type: operation

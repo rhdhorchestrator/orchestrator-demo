@@ -3,11 +3,12 @@ data:
   application.properties: |+
     # Backstage Notifications service
     rhdh_url=${RHDH_URL}
-    quarkus.rest-client.notifications.url=${rhdh_url}
+    rhdh_internal_svc=${RHDH_INTERNAL_SVC}
+    quarkus.rest-client.notifications.url=${rhdh_internal_svc}
     quarkus.openapi-generator.notifications.auth.BearerToken.bearer-token=${NOTIFICATIONS_BEARER_TOKEN}
 
     # Backstage Scaffolder service
-    quarkus.rest-client.scaffolder_openapi_yaml.url=${rhdh_url}
+    quarkus.rest-client.scaffolder_openapi_yaml.url=${rhdh_internal_svc}
     quarkus.openapi-generator.scaffolder_openapi_yaml.auth.BearerToken.bearer-token=${SCAFFOLDER_BEARER_TOKEN}
     software_template_ref=${SOFTWARE_TEMPLATE_REF:template:default/my-spring-petclinic-template}
 
@@ -25,6 +26,10 @@ data:
     quarkus.openapi-generator.argocd_openapi_yaml.auth.BearerToken.bearer-token=${ARGOCD_OCP_API_TOKEN}
     quarkus.tls.trust-all=true
     quarkus.kubernetes-client.trust-certs=true
+
+    # OpenShift/OCP API for namespace operations
+    quarkus.rest-client.ocp_openapi_yaml.url=${ARGOCD_OCP_API_URL}
+    quarkus.openapi-generator.ocp_openapi_yaml.auth.BearerToken.bearer-token=${ARGOCD_OCP_API_TOKEN}
 
     # Github
     quarkus.rest-client.github_openapi_yaml.url=https://api.github.com
@@ -53,5 +58,9 @@ metadata:
   creationTimestamp: null
   labels:
     app: aap-db-deploy
+    app.kubernetes.io/component: serverless-workflow
+    app.kubernetes.io/managed-by: sonataflow-operator
+    app.kubernetes.io/name: aap-db-deploy
     sonataflow.org/workflow-app: aap-db-deploy
+    sonataflow.org/workflow-namespace: ""
   name: aap-db-deploy-props
