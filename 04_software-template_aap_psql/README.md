@@ -18,7 +18,7 @@ This guide walks you through a workflow that creates and deploys an application 
 
 ---
 ## Workflow Demo
-See [demo recording](https://www.youtube.com/watch?v=ApDemFgkjqo).
+See [demo recording](https://www.youtube.com/watch?v=ncpKtLaij9g).
 
 ## Workflow Diagram
 
