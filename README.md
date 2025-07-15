@@ -41,7 +41,7 @@ registry.redhat.io/openshift-serverless-1/logic-swf-devmode-rhel8:1.36.0
 
 For building the workflow image, the following images are pulled:
 ```
-registry.redhat.io/openshift-serverless-1/logic-swf-builder-rhel8@sha256:5590b799420769ee2fe316bc0425bec10f7a29433765244702a23348150e621e
+registry.redhat.io/openshift-serverless-1/logic-swf-builder-rhel8:1.36.0-8
 registry.access.redhat.com/ubi9/openjdk-17:1.21-2
 ```
 
