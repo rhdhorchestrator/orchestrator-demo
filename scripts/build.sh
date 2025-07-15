@@ -30,14 +30,17 @@ Flags:
     -r|--runtime-image=<string>          Overrides the image to use for running the workflow.
     -n|--namespace=<string>              The target namespace where the manifests will be applied. Default: current namespace.
     -m|--manifests-directory=<string>    The operator manifests will be generated inside the specified directory. Default: 'manifests' directory in the current directory.
-    -w|--workflow-directory=<string>     Path to the directory containing the workflow's files (the 'src' directory). Default: current directory.
+    -w|--workflow-directory=<string>     Path to the directory containing the workflow's files. For Quarkus projects, this should be the directory containing 'src'. For non-Quarkus layout, this should be the directory containing the workflow files directly. Default: current directory.
     -P|--no-persistence                  Skips adding persistence configuration to the sonataflow CR.
+    -S|--non-quarkus                     Use non-Quarkus layout where workflow resources are in the project root instead of src/main/resources.
        --push                            Pushes the workflow image to the container registry.
        --deploy                          Deploys the application.
     -h|--help                            Prints this help message.
 
 Notes: 
     - This script respects the 'QUARKUS_EXTENSIONS' and 'MAVEN_ARGS_APPEND' environment variables.
+    - Use --non-quarkus for non-Quarkus projects where workflow files (.sw.yaml, schemas/, etc.) are in the project root directory.
+    - Without --non-quarkus, the script expects Quarkus project structure with resources in src/main/resources/.
 EOF
 }
 
@@ -49,14 +52,16 @@ args["namespace"]=""
 args["builder-image"]=""
 args["runtime-image"]=""
 args["no-persistence"]=""
+args["non-quarkus"]=""
 args["workflow-directory"]="$PWD"
 args["manifests-directory"]="$PWD/manifests"
 
 function parse_args {
-    while getopts ":i:b:r:n:m:w:hP-:" opt; do
+    while getopts ":i:b:r:n:m:w:hPS-:" opt; do
         case $opt in
             h) usage; exit ;;
             P) args["no-persistence"]="YES" ;;
+            S) args["non-quarkus"]="YES" ;;
             i) args["image"]="$OPTARG" ;;
             n) args["namespace"]="$OPTARG" ;;
             m) args["manifests-directory"]="$(realpath "$OPTARG" 2>/dev/null || echo "$PWD/$OPTARG")" ;;
@@ -75,6 +80,8 @@ function parse_args {
                         args["push"]="YES" ;;
                     no-persistence)
                         args["no-persistence"]="YES" ;;
+                    non-quarkus)
+                        args["non-quarkus"]="YES" ;;
                     image=*)
                         assert_optarg_not_empty "$OPTARG" || exit $?
                         args["image"]="${OPTARG#*=}"
@@ -113,7 +120,15 @@ function parse_args {
 }
 
 function gen_manifests {
-    local res_dir_path="${args["workflow-directory"]}/src/main/resources"
+    local res_dir_path
+    if [[ -n "${args["non-quarkus"]:-}" ]]; then
+        res_dir_path="${args["workflow-directory"]}"
+        log_info "Using non-Quarkus layout: resources in project root"
+    else
+        res_dir_path="${args["workflow-directory"]}/src/main/resources"
+        log_info "Using Quarkus layout: resources in src/main/resources"
+    fi
+    
     local workflow_id
     workflow_id="$(get_workflow_id "$res_dir_path")"
 
@@ -239,7 +254,8 @@ function push {
     if ! git rev-parse --short=8 HEAD >/dev/null 2>&1; then
         log_info "Failed to get the git commit hash, skipping image push with commit hash as tag"
     else
-        local commit_hash=$(git rev-parse --short=8 HEAD)
+        local commit_hash
+        commit_hash=$(git rev-parse --short=8 HEAD)
         pocker push "$image_name:$commit_hash"
     fi
 
