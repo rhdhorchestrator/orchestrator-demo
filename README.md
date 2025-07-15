@@ -5,13 +5,13 @@ This repository contains the source code of workflows we use for demo.
 It also contains scripts used to build and push the image of the workflow and to generate the associated manifests in order to deploy the workflows in an OCP cluster.
 
 ## Pre-requisites
-* Having `kn-workflow` **v1.35** installed: see https://docs.openshift.com/serverless/1.35/serverless-logic/serverless-logic-getting-started/serverless-logic-creating-managing-workflows.html
-  * You can find the binary here: https://mirror.openshift.com/pub/cgw/serverless-logic/1.35.0/
+* Having `kn-workflow` **v1.36** installed: see https://docs.openshift.com/serverless/1.36/serverless-logic/serverless-logic-getting-started/serverless-logic-creating-managing-workflows.html
+  * You can find the binary here: https://mirror.openshift.com/pub/cgw/serverless-logic/1.36.0/
 * Having an OCP cluster  with 
-  * Red Hat Developer Hub (RHDH) v1.4 or v1.5 
+  * Red Hat Developer Hub (RHDH) v1.5 or v1.6 
     * Notification plugin 
-    * Orchestrator plugin [v1.4](https://www.rhdhorchestrator.io/1.4/docs/) or [v1.5](https://www.rhdhorchestrator.io/1.5/docs/)
-  * OpenShift Serverless (OSL) v1.35
+    * Orchestrator plugin [v1.5](https://www.rhdhorchestrator.io/1.5/docs/) or [v1.6](https://www.rhdhorchestrator.io/1.6/docs/)
+  * OpenShift Serverless (OSL) v1.36
 
 > **Notice**: The content of this repository was tested on Fedora/RHEL. Building images on MacOS with podman fails, but can be completed with docker.
 
@@ -36,7 +36,7 @@ kn-workflow quarkus run
 ## Workflow images
 For running the workflow locally (with `kn-workflow run`), the following image is pulled:
 ```
-registry.redhat.io/openshift-serverless-1/logic-swf-devmode-rhel8:1.35.0
+registry.redhat.io/openshift-serverless-1/logic-swf-devmode-rhel8:1.36.0
 ```
 
 For building the workflow image, the following images are pulled:
@@ -47,7 +47,7 @@ registry.access.redhat.com/ubi9/openjdk-17:1.21-2
 
 ## References
 
-* How to deploy workflow in another namespace: https://github.com/rhdhorchestrator/orchestrator-go-operator/tree/main/docs/release-1.5#additional-workflow-namespaces
+* How to deploy workflow in another namespace: https://github.com/rhdhorchestrator/orchestrator-go-operator/tree/main/docs/release-1.6#additional-workflow-namespaces
 * Developing workflow tutorials: https://redhat-scholars.github.io/serverless-workflow/osl/index.html
 * OpenShift Serverless Logic: https://openshift-knative.github.io/docs/docs/latest/serverless-logic/about.html
 * Using Quarkus: https://docs.redhat.com/en/documentation/red_hat_build_of_quarkus/3.15/html/getting_started_with_red_hat_build_of_quarkus/assembly_quarkus-getting-started_quarkus-getting-started#proc_online-maven_quarkus-getting-started
