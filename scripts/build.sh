@@ -181,23 +181,31 @@ function build_image {
     local image_name="${args["image"]%:*}"
     local tag="${args["image"]#*:}"
 
-    # These add-ons enable the use of JDBC for persisting workflow states and correlation
-    # contexts in serverless workflow applications.
+    # Base extensions that are always included
     local base_quarkus_extensions="\
     io.quarkiverse.openapi.generator:quarkus-openapi-generator:2.9.1-lts,\
     org.kie:kie-addons-quarkus-monitoring-sonataflow,\
-    org.kie:kogito-addons-quarkus-jobs-knative-eventing,\
-    org.kie:kie-addons-quarkus-persistence-jdbc,\
-    io.quarkus:quarkus-jdbc-postgresql:3.15.4.redhat-00001,\
-    io.quarkus:quarkus-agroal:3.15.4.redhat-00001"
+    org.kie:kogito-addons-quarkus-jobs-knative-eventing"
+
+    # Add persistence extensions only when persistence is enabled
+    if [[ -z "${args["no-persistence"]:-}" ]]; then
+        base_quarkus_extensions="${base_quarkus_extensions},\
+        org.kie:kie-addons-quarkus-persistence-jdbc,\
+        io.quarkus:quarkus-jdbc-postgresql:3.15.4.redhat-00001,\
+        io.quarkus:quarkus-agroal:3.15.4.redhat-00001"
+    fi
 
     # The 'maxYamlCodePoints' parameter contols the maximum size for YAML input files. 
     # Set to 35000000 characters which is ~33MB in UTF-8.  
-    local base_maven_args_append="\
-    -DmaxYamlCodePoints=35000000 \
-    -Dkogito.persistence.type=jdbc \
-    -Dquarkus.datasource.db-kind=postgresql \
-    -Dkogito.persistence.proto.marshaller=false"
+    local base_maven_args_append="-DmaxYamlCodePoints=35000000"
+    
+    # Add persistence configuration only when persistence is enabled
+    if [[ -z "${args["no-persistence"]:-}" ]]; then
+        base_maven_args_append="${base_maven_args_append} \
+        -Dkogito.persistence.type=jdbc \
+        -Dquarkus.datasource.db-kind=postgresql \
+        -Dkogito.persistence.proto.marshaller=false"
+    fi
     
     if [[ -n "${QUARKUS_EXTENSIONS:-}" ]]; then
         base_quarkus_extensions="${base_quarkus_extensions},${QUARKUS_EXTENSIONS}"
