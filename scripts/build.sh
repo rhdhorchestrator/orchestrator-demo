@@ -7,10 +7,76 @@ script_name="${BASH_SOURCE:-$0}"
 script_path="$(realpath "$script_name")"
 script_dir_path="$(dirname "$script_path")"
 
-# shellcheck disable=SC1091
-source "${script_dir_path}/lib/_logger.sh"
-# shellcheck disable=SC1091
-source "${script_dir_path}/lib/_functions.sh"
+# Logger functions
+RED='\033[0;31m'
+YELLOW='\033[0;33m'
+DEFAULT='\033[0m'
+
+function log_warning() {
+  local message="$1"
+
+  echo >&2 -e "${YELLOW}WARN: ${message}${DEFAULT}"
+}
+
+function log_error() {
+  local message="$1"
+
+  echo >&2 -e "${RED}ERROR: ${message}${DEFAULT}"
+}
+
+function log_info() {
+  local message="$1"
+
+  echo >&2 -e "INFO: ${message}"
+}
+
+# Helper functions
+function is_macos {
+    [[ "$(uname)" == Darwin ]]
+}
+
+# A wrapper for the find command that uses the -E flag on macOS.
+# Extended regex (ERE) is not supported by default on macOS.
+function findw {
+    if is_macos; then
+        find -E "$@"
+    else
+        find "$@"
+    fi
+}
+
+function get_workflow_id {
+    local workdir="$1"
+    local workflow_file=""
+    local workflow_id=""
+
+    workflow_file=$(findw "$workdir" -type f -regex '.*\.sw\.ya?ml$')
+    if [ -z "$workflow_file" ]; then
+        log_error "No workflow file found with *.sw.yaml or *.sw.yml suffix"
+        return 10
+    fi
+
+    workflow_id=$(yq '.id | downcase' "$workflow_file" 2>/dev/null)
+    if [ -z "$workflow_id" ]; then
+        log_error "The workflow file doesn't seem to have an 'id' property."
+        return 11
+    fi
+
+    echo "$workflow_id"
+}
+
+function container_engine {
+    $(command -v docker || command -v podman ) "$@"
+}
+
+function assert_optarg_not_empty {
+    local arg="$1"
+
+    if [[ -z "${arg#*=}" ]]; then
+        log_error "Option --${arg%=*} requires an argument when specified."
+        return 12
+    fi
+}
 
 function usage {
     cat <<EOF
@@ -217,7 +283,7 @@ function build_image {
     fi
 
     # Build specifically for linux/amd64 to ensure compatibility with OSL v1.35.0
-    local pocker_args=(
+    local container_args=(
         -f="$script_dir_path/../docker/osl.Dockerfile"
         --tag="${args["image"]}"
         --platform='linux/amd64'
@@ -225,42 +291,43 @@ function build_image {
         --build-arg="QUARKUS_EXTENSIONS=${base_quarkus_extensions}"
         --build-arg="MAVEN_ARGS_APPEND=${base_maven_args_append}"
     )
-    [[ -n "${args["builder-image"]:-}" ]] && pocker_args+=(--build-arg="BUILDER_IMAGE=${args["builder-image"]}")
-    [[ -n "${args["runtime-image"]:-}" ]] && pocker_args+=(--build-arg="RUNTIME_IMAGE=${args["runtime-image"]}")
+    [[ -n "${args["builder-image"]:-}" ]] && container_args+=(--build-arg="BUILDER_IMAGE=${args["builder-image"]}")
+    [[ -n "${args["runtime-image"]:-}" ]] && container_args+=(--build-arg="RUNTIME_IMAGE=${args["runtime-image"]}")
 
-    pocker build "${pocker_args[@]}" "${args["workflow-directory"]}"
+    container_engine build "${container_args[@]}" "${args["workflow-directory"]}"
 
     if ! git rev-parse --short=8 HEAD >/dev/null 2>&1; then
         log_info "Failed to get the git commit hash, skipping tagging with commit hash"
     else
-        local commit_hash=$(git rev-parse --short=8 HEAD)
-        pocker tag "${args["image"]}" "$image_name:$commit_hash"
+        local commit_hash
+        commit_hash=$(git rev-parse --short=8 HEAD)
+        container_engine tag "${args["image"]}" "$image_name:$commit_hash"
     fi
 
     if [[ "$tag" != "latest" ]]; then
-        pocker tag "${args["image"]}" "$image_name:latest"
+        container_engine tag "${args["image"]}" "$image_name:latest"
     fi
 
     log_info "Workflow image built with tags:"
-    pocker images --filter="reference=$image_name" --format="{{.Repository}}:{{.Tag}}"
+    container_engine images --filter="reference=$image_name" --format="{{.Repository}}:{{.Tag}}"
 }
 
 function push {
     local image_name="${args["image"]%:*}"
     local tag="${args["image"]#*:}"
 
-    pocker push "${args["image"]}"
+    container_engine push "${args["image"]}"
 
     if ! git rev-parse --short=8 HEAD >/dev/null 2>&1; then
         log_info "Failed to get the git commit hash, skipping image push with commit hash as tag"
     else
         local commit_hash
         commit_hash=$(git rev-parse --short=8 HEAD)
-        pocker push "$image_name:$commit_hash"
+        container_engine push "$image_name:$commit_hash"
     fi
 
     if [[ "$tag" != "latest" ]]; then
-        pocker push "$image_name:latest"
+        container_engine push "$image_name:latest"
     fi
 }
 
