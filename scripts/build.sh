@@ -42,9 +42,26 @@ function check_dependencies() {
     local missing_deps=()
     local required_tools=("kn-workflow" "yq" "git")
     
-    # Check for container engine
-    if ! command -v docker >/dev/null 2>&1 && ! command -v podman >/dev/null 2>&1; then
-        missing_deps+=("docker or podman")
+    # Detect and validate container engine
+    if [[ -n "${args["container-engine"]:-}" ]]; then
+        # Use user-specified container engine
+        if ! command -v "${args["container-engine"]}" >/dev/null 2>&1; then
+            missing_deps+=("${args["container-engine"]}")
+        else
+            DETECTED_CONTAINER_ENGINE="${args["container-engine"]}"
+            log_info "Using specified container engine: ${args["container-engine"]}"
+        fi
+    else
+        # Auto-detect container engine
+        if command -v docker >/dev/null 2>&1; then
+            DETECTED_CONTAINER_ENGINE="docker"
+            log_info "Auto-detected container engine: docker"
+        elif command -v podman >/dev/null 2>&1; then
+            DETECTED_CONTAINER_ENGINE="podman"
+            log_info "Auto-detected container engine: podman"
+        else
+            missing_deps+=("docker or podman")
+        fi
     fi
     
     # Check for kubectl only if deploy flag is set
@@ -125,15 +142,12 @@ function get_workflow_id {
 }
 
 function container_engine {
-    local engine
-    engine=$(command -v docker || command -v podman)
-    
-    if [[ -z "$engine" ]]; then
-        log_error "Neither docker nor podman found. Please install one of them."
+    if [[ -z "$DETECTED_CONTAINER_ENGINE" ]]; then
+        log_error "Container engine not detected. Please run dependency check first."
         return 16
     fi
     
-    "$engine" "$@"
+    "$DETECTED_CONTAINER_ENGINE" "$@"
 }
 
 function assert_optarg_not_empty {
@@ -164,6 +178,7 @@ Flags:
     -n|--namespace=<string>              The target namespace where the manifests will be applied. Default: current namespace.
     -m|--manifests-directory=<string>    The operator manifests will be generated inside the specified directory. Default: 'manifests' directory in the current directory.
     -w|--workflow-directory=<string>     Path to the directory containing the workflow's files. For Quarkus projects, this should be the directory containing 'src'. For non-Quarkus layout, this should be the directory containing the workflow files directly. Default: current directory.
+    -c|--container-engine=<string>       Container engine to use (docker or podman). Default: auto-detect.
     -P|--no-persistence                  Skips adding persistence configuration to the sonataflow CR.
     -S|--non-quarkus                     Use non-Quarkus layout where workflow resources are in the project root instead of src/main/resources.
        --push                            Pushes the workflow image to the container registry.
@@ -174,6 +189,7 @@ Notes:
     - This script respects the 'QUARKUS_EXTENSIONS' and 'MAVEN_ARGS_APPEND' environment variables.
     - Use --non-quarkus for non-Quarkus projects where workflow files (.sw.yaml, schemas/, etc.) are in the project root directory.
     - Without --non-quarkus, the script expects Quarkus project structure with resources in src/main/resources/.
+    - Use --container-engine to specify docker or podman. If not specified, the script will auto-detect which one is available.
 EOF
 }
 
@@ -184,13 +200,17 @@ args["push"]=""
 args["namespace"]=""
 args["builder-image"]=""
 args["runtime-image"]=""
+args["container-engine"]=""
 args["no-persistence"]=""
 args["non-quarkus"]=""
 args["workflow-directory"]="$PWD"
 args["manifests-directory"]="$PWD/manifests"
 
+# Global variable to store the detected container engine
+DETECTED_CONTAINER_ENGINE=""
+
 function parse_args {
-    while getopts ":i:b:r:n:m:w:hPS-:" opt; do
+    while getopts ":i:b:r:n:m:w:c:hPS-:" opt; do
         case $opt in
             h) usage; exit ;;
             P) args["no-persistence"]="YES" ;;
@@ -199,6 +219,7 @@ function parse_args {
             n) args["namespace"]="$OPTARG" ;;
             m) args["manifests-directory"]="$(realpath "$OPTARG" 2>/dev/null || echo "$PWD/$OPTARG")" ;;
             w) args["workflow-directory"]="$(realpath "$OPTARG")" ;;
+            c) args["container-engine"]="$OPTARG" ;;
             b) args["builder-image"]="$OPTARG" ;;
             r) args["runtime-image"]="$OPTARG" ;;
             -)
@@ -238,6 +259,10 @@ function parse_args {
                         assert_optarg_not_empty "$OPTARG" || exit $?
                         args["runtime-image"]="${OPTARG#*=}"
                     ;;
+                    container-engine=*)
+                        assert_optarg_not_empty "$OPTARG" || exit $?
+                        args["container-engine"]="${OPTARG#*=}"
+                    ;;
                     *) log_error "Invalid option: --$OPTARG"; usage; exit 1 ;;
                 esac
             ;;
@@ -254,6 +279,15 @@ function parse_args {
     # Validate inputs
     validate_image_name "${args["image"]}"
     validate_directory "${args["workflow-directory"]}" "Workflow"
+    
+    # Validate container engine if specified
+    if [[ -n "${args["container-engine"]:-}" ]]; then
+        if [[ "${args["container-engine"]}" != "docker" && "${args["container-engine"]}" != "podman" ]]; then
+            log_error "Invalid container engine: ${args["container-engine"]}"
+            log_error "Supported container engines: docker, podman"
+            exit 27
+        fi
+    fi
     
     # Create manifests directory if it doesn't exist
     mkdir -p "${args["manifests-directory"]}"
@@ -355,6 +389,7 @@ function build_image {
     log_info "Building image: ${args["image"]}"
     log_info "Image name: $image_name"
     log_info "Tag: $tag"
+    log_info "Container engine: $DETECTED_CONTAINER_ENGINE"
 
     # Base extensions that are always included
     local base_quarkus_extensions="\
