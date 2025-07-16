@@ -10,6 +10,7 @@ script_dir_path="$(dirname "$script_path")"
 # Logger functions
 RED='\033[0;31m'
 YELLOW='\033[0;33m'
+GREEN='\033[0;32m'
 DEFAULT='\033[0m'
 
 function log_warning() {
@@ -30,6 +31,43 @@ function log_info() {
   echo >&2 -e "INFO: ${message}"
 }
 
+function log_success() {
+  local message="$1"
+
+  echo >&2 -e "${GREEN}SUCCESS: ${message}${DEFAULT}"
+}
+
+# Dependency validation
+function check_dependencies() {
+    local missing_deps=()
+    local required_tools=("kn-workflow" "yq" "git")
+    
+    # Check for container engine
+    if ! command -v docker >/dev/null 2>&1 && ! command -v podman >/dev/null 2>&1; then
+        missing_deps+=("docker or podman")
+    fi
+    
+    # Check for kubectl only if deploy flag is set
+    if [[ -n "${args["deploy"]:-}" ]] && ! command -v kubectl >/dev/null 2>&1; then
+        missing_deps+=("kubectl")
+    fi
+    
+    # Check required tools
+    for tool in "${required_tools[@]}"; do
+        if ! command -v "$tool" >/dev/null 2>&1; then
+            missing_deps+=("$tool")
+        fi
+    done
+    
+    if [[ ${#missing_deps[@]} -gt 0 ]]; then
+        log_error "Missing required dependencies: ${missing_deps[*]}"
+        log_error "Please install the missing tools and try again."
+        return 13
+    fi
+    
+    log_info "All dependencies are available"
+}
+
 # Helper functions
 function is_macos {
     [[ "$(uname)" == Darwin ]]
@@ -45,6 +83,27 @@ function findw {
     fi
 }
 
+function validate_image_name() {
+    local image="$1"
+    
+    # Basic validation for image name format
+    if [[ ! "$image" =~ ^[a-zA-Z0-9._/-]+:[a-zA-Z0-9._-]+$ ]]; then
+        log_error "Invalid image name format: $image"
+        log_error "Expected format: registry/image:tag"
+        return 14
+    fi
+}
+
+function validate_directory() {
+    local dir="$1"
+    local description="$2"
+    
+    if [[ ! -d "$dir" ]]; then
+        log_error "$description directory does not exist: $dir"
+        return 15
+    fi
+}
+
 function get_workflow_id {
     local workdir="$1"
     local workflow_file=""
@@ -52,13 +111,13 @@ function get_workflow_id {
 
     workflow_file=$(findw "$workdir" -type f -regex '.*\.sw\.ya?ml$')
     if [ -z "$workflow_file" ]; then
-        log_error "No workflow file found with *.sw.yaml or *.sw.yml suffix"
+        log_error "No workflow file found with *.sw.yaml or *.sw.yml suffix in: $workdir"
         return 10
     fi
 
     workflow_id=$(yq '.id | downcase' "$workflow_file" 2>/dev/null)
     if [ -z "$workflow_id" ]; then
-        log_error "The workflow file doesn't seem to have an 'id' property."
+        log_error "The workflow file doesn't seem to have an 'id' property: $workflow_file"
         return 11
     fi
 
@@ -66,7 +125,15 @@ function get_workflow_id {
 }
 
 function container_engine {
-    $(command -v docker || command -v podman ) "$@"
+    local engine
+    engine=$(command -v docker || command -v podman)
+    
+    if [[ -z "$engine" ]]; then
+        log_error "Neither docker nor podman found. Please install one of them."
+        return 16
+    fi
+    
+    "$engine" "$@"
 }
 
 function assert_optarg_not_empty {
@@ -81,7 +148,7 @@ function assert_optarg_not_empty {
 function usage {
     cat <<EOF
 This script performs the following tasks in this specific order:
-1. Generates a list of Operator manifests for a SonataFlow project using the kn-workflow plugin (requires exactly v1.35.0)
+1. Generates a list of Operator manifests for a SonataFlow project using the kn-workflow plugin (>= v1.36.0)
 2. Builds the workflow image using podman or docker
 3. Optionally, deploys the application:
     - Pushes the workflow image to the container registry specified by the image path
@@ -183,9 +250,18 @@ function parse_args {
         log_error "Missing required flag: --image"
         usage; exit 4
     fi
+    
+    # Validate inputs
+    validate_image_name "${args["image"]}"
+    validate_directory "${args["workflow-directory"]}" "Workflow"
+    
+    # Create manifests directory if it doesn't exist
+    mkdir -p "${args["manifests-directory"]}"
 }
 
 function gen_manifests {
+    log_info "=== Generating Kubernetes manifests ==="
+    
     local res_dir_path
     if [[ -n "${args["non-quarkus"]:-}" ]]; then
         res_dir_path="${args["workflow-directory"]}"
@@ -195,8 +271,12 @@ function gen_manifests {
         log_info "Using Quarkus layout: resources in src/main/resources"
     fi
     
+    # Validate resource directory exists
+    validate_directory "$res_dir_path" "Workflow resources"
+    
     local workflow_id
     workflow_id="$(get_workflow_id "$res_dir_path")"
+    log_info "Found workflow ID: $workflow_id"
 
     cd "$res_dir_path"
     log_info "Switched directory: $res_dir_path"
@@ -208,20 +288,35 @@ function gen_manifests {
     )
     if [[ -z "${args["namespace"]:-}" ]]; then
         gen_manifest_args+=(--skip-namespace)
+        log_info "Generating manifests without namespace"
     else
         gen_manifest_args+=(--namespace="${args["namespace"]}")
+        log_info "Generating manifests for namespace: ${args["namespace"]}"
     fi
-    kn-workflow gen-manifest "${gen_manifest_args[@]}"        
-
+    
+    log_info "Running: kn-workflow gen-manifest ${gen_manifest_args[*]}"
+    if ! kn-workflow gen-manifest "${gen_manifest_args[@]}"; then
+        log_error "Failed to generate manifests"
+        return 17
+    fi
+    
     cd "${args["workflow-directory"]}"
     log_info "Switched directory: ${args["workflow-directory"]}"
 
     # Find the sonataflow CR for the workflow
     local sonataflow_cr
     sonataflow_cr="$(findw "${args["manifests-directory"]}" -type f -name "*-sonataflow_${workflow_id}.yaml")"
+    
+    if [[ -z "$sonataflow_cr" ]]; then
+        log_error "Could not find sonataflow CR for workflow: $workflow_id"
+        return 18
+    fi
+    
+    log_info "Found sonataflow CR: $sonataflow_cr"
 
     if [[ -z "${args["no-persistence"]:-}" ]]; then
-        yq --inplace ".spec |= (
+        log_info "Adding persistence configuration to sonataflow CR"
+        if ! yq --inplace ".spec |= (
             . + {
                 \"persistence\": {
                     \"postgresql\": {
@@ -239,14 +334,27 @@ function gen_manifests {
                     }
                 }
             }
-        )" "${sonataflow_cr}"
-        log_info "Added persistence configuration to the sonataflow CR"
+        )" "${sonataflow_cr}"; then
+            log_error "Failed to add persistence configuration"
+            return 19
+        fi
+        log_success "Added persistence configuration to sonataflow CR"
+    else
+        log_info "Skipping persistence configuration"
     fi
+    
+    log_success "Manifests generated successfully in: ${args["manifests-directory"]}"
 }
 
 function build_image {
+    log_info "=== Building workflow image ==="
+    
     local image_name="${args["image"]%:*}"
     local tag="${args["image"]#*:}"
+    
+    log_info "Building image: ${args["image"]}"
+    log_info "Image name: $image_name"
+    log_info "Tag: $tag"
 
     # Base extensions that are always included
     local base_quarkus_extensions="\
@@ -260,6 +368,9 @@ function build_image {
         org.kie:kie-addons-quarkus-persistence-jdbc,\
         io.quarkus:quarkus-jdbc-postgresql:3.15.4.redhat-00001,\
         io.quarkus:quarkus-agroal:3.15.4.redhat-00001"
+        log_info "Including persistence extensions"
+    else
+        log_info "Skipping persistence extensions"
     fi
 
     # The 'maxYamlCodePoints' parameter contols the maximum size for YAML input files. 
@@ -276,15 +387,24 @@ function build_image {
     
     if [[ -n "${QUARKUS_EXTENSIONS:-}" ]]; then
         base_quarkus_extensions="${base_quarkus_extensions},${QUARKUS_EXTENSIONS}"
+        log_info "Added custom extensions: ${QUARKUS_EXTENSIONS}"
     fi
 
     if [[ -n "${MAVEN_ARGS_APPEND:-}" ]]; then
         base_maven_args_append="${base_maven_args_append} ${MAVEN_ARGS_APPEND}"
+        log_info "Added custom Maven args: ${MAVEN_ARGS_APPEND}"
+    fi
+
+    # Validate Dockerfile exists
+    local dockerfile_path="$script_dir_path/../docker/osl.Dockerfile"
+    if [[ ! -f "$dockerfile_path" ]]; then
+        log_error "Dockerfile not found: $dockerfile_path"
+        return 20
     fi
 
     # Build specifically for linux/amd64 to ensure compatibility with OSL v1.35.0
     local container_args=(
-        -f="$script_dir_path/../docker/osl.Dockerfile"
+        -f="$dockerfile_path"
         --tag="${args["image"]}"
         --platform='linux/amd64'
         --ulimit='nofile=4096:4096'
@@ -294,54 +414,134 @@ function build_image {
     [[ -n "${args["builder-image"]:-}" ]] && container_args+=(--build-arg="BUILDER_IMAGE=${args["builder-image"]}")
     [[ -n "${args["runtime-image"]:-}" ]] && container_args+=(--build-arg="RUNTIME_IMAGE=${args["runtime-image"]}")
 
-    container_engine build "${container_args[@]}" "${args["workflow-directory"]}"
+    log_info "Starting container build (this may take several minutes)..."
+    if ! container_engine build "${container_args[@]}" "${args["workflow-directory"]}"; then
+        log_error "Container build failed"
+        return 21
+    fi
+    
+    log_success "Container build completed successfully"
 
+    # Tag with git commit hash if available
     if ! git rev-parse --short=8 HEAD >/dev/null 2>&1; then
-        log_info "Failed to get the git commit hash, skipping tagging with commit hash"
+        log_warning "Failed to get git commit hash, skipping commit tag"
     else
         local commit_hash
         commit_hash=$(git rev-parse --short=8 HEAD)
+        log_info "Tagging with commit hash: $commit_hash"
         container_engine tag "${args["image"]}" "$image_name:$commit_hash"
     fi
 
+    # Tag with latest if not already latest
     if [[ "$tag" != "latest" ]]; then
+        log_info "Tagging with 'latest' tag"
         container_engine tag "${args["image"]}" "$image_name:latest"
     fi
 
-    log_info "Workflow image built with tags:"
+    log_success "Image built successfully with tags:"
     container_engine images --filter="reference=$image_name" --format="{{.Repository}}:{{.Tag}}"
 }
 
-function push {
+function push_image {
+    log_info "=== Pushing workflow image ==="
+    
     local image_name="${args["image"]%:*}"
     local tag="${args["image"]#*:}"
+    
+    log_info "Pushing image: ${args["image"]}"
 
-    container_engine push "${args["image"]}"
+    if ! container_engine push "${args["image"]}"; then
+        log_error "Failed to push image: ${args["image"]}"
+        return 22
+    fi
+    log_success "Pushed: ${args["image"]}"
 
+    # Push commit hash tag if available
     if ! git rev-parse --short=8 HEAD >/dev/null 2>&1; then
-        log_info "Failed to get the git commit hash, skipping image push with commit hash as tag"
+        log_warning "Failed to get git commit hash, skipping commit tag push"
     else
         local commit_hash
         commit_hash=$(git rev-parse --short=8 HEAD)
-        container_engine push "$image_name:$commit_hash"
+        local commit_tag="$image_name:$commit_hash"
+        log_info "Pushing commit tag: $commit_tag"
+        if ! container_engine push "$commit_tag"; then
+            log_warning "Failed to push commit tag: $commit_tag"
+        else
+            log_success "Pushed: $commit_tag"
+        fi
     fi
 
+    # Push latest tag if not already latest
     if [[ "$tag" != "latest" ]]; then
-        container_engine push "$image_name:latest"
+        local latest_tag="$image_name:latest"
+        log_info "Pushing latest tag: $latest_tag"
+        if ! container_engine push "$latest_tag"; then
+            log_warning "Failed to push latest tag: $latest_tag"
+        else
+            log_success "Pushed: $latest_tag"
+        fi
     fi
+    
+    log_success "Image push completed successfully"
 }
 
-parse_args "$@"
+function deploy_manifests {
+    log_info "=== Deploying manifests ==="
+    
+    if [[ ! -d "${args["manifests-directory"]}" ]]; then
+        log_error "Manifests directory not found: ${args["manifests-directory"]}"
+        return 23
+    fi
+    
+    local manifest_files
+    manifest_files=$(find "${args["manifests-directory"]}" -name "*.yaml" -o -name "*.yml" | wc -l)
+    
+    if [[ "$manifest_files" -eq 0 ]]; then
+        log_error "No manifest files found in: ${args["manifests-directory"]}"
+        return 24
+    fi
+    
+    log_info "Found $manifest_files manifest file(s)"
+    
+    if [[ -n "${args["namespace"]:-}" ]]; then
+        log_info "Applying manifests to namespace: ${args["namespace"]}"
+        if ! kubectl apply -f "${args["manifests-directory"]}" -n "${args["namespace"]}"; then
+            log_error "Failed to apply manifests to namespace: ${args["namespace"]}"
+            return 25
+        fi
+    else
+        log_info "Applying manifests to current namespace"
+        if ! kubectl apply -f "${args["manifests-directory"]}"; then
+            log_error "Failed to apply manifests"
+            return 26
+        fi
+    fi
+    
+    log_success "Manifests deployed successfully"
+}
 
-gen_manifests
-build_image
+# Main execution
+function main {
+    log_info "=== Starting workflow build process ==="
+    
+    parse_args "$@"
+    
+    check_dependencies
+    
+    gen_manifests
+    
+    build_image
+    
+    if [[ -n "${args["push"]}" ]]; then
+        push_image
+    fi
+    
+    if [[ -n "${args["deploy"]}" ]]; then
+        deploy_manifests
+    fi
+    
+    log_success "=== Workflow build process completed successfully ==="
+}
 
-if [[ -n "${args["push"]}" ]]; then
-    log_info "Pushing the workflow image to ${args["image"]%/*}"
-    push
-fi
-
-if [[ -n "${args["deploy"]}" ]]; then
-    log_info "Applying the generated manifests"
-    kubectl apply -f "${args["manifests-directory"]}"
-fi
+# Run main function with all arguments
+main "$@"
