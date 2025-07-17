@@ -4,8 +4,10 @@ set -euo pipefail
 [[ -n "${DEBUGME:-}" ]] && set -x
 
 script_name="${BASH_SOURCE:-$0}"
-script_path="$(realpath "$script_name")"
-script_dir_path="$(dirname "$script_path")"
+
+# Default container images
+DEFAULT_BUILDER_IMAGE="registry.redhat.io/openshift-serverless-1/logic-swf-builder-rhel8:1.36.0-8"
+DEFAULT_RUNTIME_IMAGE="registry.access.redhat.com/ubi9/openjdk-17:1.21-2"
 
 # Logger functions
 RED='\033[0;31m'
@@ -173,8 +175,9 @@ Usage:
 
 Flags:
     -i|--image=<string> (required)       The full container image path to use for the workflow, e.g: quay.io/orchestrator/demo:latest.
-    -b|--builder-image=<string>          Overrides the image to use for building the workflow image.
-    -r|--runtime-image=<string>          Overrides the image to use for running the workflow.
+    -b|--builder-image=<string>          Overrides the image to use for building the workflow image. Default: $DEFAULT_BUILDER_IMAGE.
+    -r|--runtime-image=<string>          Overrides the image to use for running the workflow. Default: $DEFAULT_RUNTIME_IMAGE.
+    -d|--dockerfile=<string>             Path to a custom Dockerfile to use for building the workflow image (absolute or relative to current directory). Default: uses embedded dockerfile.
     -n|--namespace=<string>              The target namespace where the manifests will be applied. Default: current namespace.
     -m|--manifests-directory=<string>    The operator manifests will be generated inside the specified directory. Default: 'manifests' directory in the current directory.
     -w|--workflow-directory=<string>     Path to the directory containing the workflow's files. For Quarkus projects, this should be the directory containing 'src'. For non-Quarkus layout, this should be the directory containing the workflow files directly. Default: current directory.
@@ -198,8 +201,9 @@ args["image"]=""
 args["deploy"]=""
 args["push"]=""
 args["namespace"]=""
-args["builder-image"]=""
-args["runtime-image"]=""
+args["builder-image"]="$DEFAULT_BUILDER_IMAGE"
+args["runtime-image"]="$DEFAULT_RUNTIME_IMAGE"
+args["dockerfile"]=""
 args["container-engine"]=""
 args["no-persistence"]=""
 args["non-quarkus"]=""
@@ -209,8 +213,56 @@ args["manifests-directory"]="$PWD/manifests"
 # Global variable to store the detected container engine
 DETECTED_CONTAINER_ENGINE=""
 
+# Function to create default dockerfile content
+function create_default_dockerfile() {
+    local dockerfile_path="$1"
+    cat > "$dockerfile_path" << 'EOF'
+ARG BUILDER_IMAGE
+ARG RUNTIME_IMAGE
+
+FROM ${BUILDER_IMAGE} AS builder
+
+# Variables that can be overridden by the builder
+# To add a Quarkus extension to your application
+ARG QUARKUS_EXTENSIONS
+ENV QUARKUS_EXTENSIONS=${QUARKUS_EXTENSIONS}
+
+# Additional Java/Maven arguments to pass to the builder
+ARG MAVEN_ARGS_APPEND
+ENV MAVEN_ARGS_APPEND=${MAVEN_ARGS_APPEND}
+
+COPY --chown=1001 . .
+
+RUN /home/kogito/launch/build-app.sh
+
+#=============================
+# Runtime
+#=============================
+FROM ${RUNTIME_IMAGE}
+
+ENV LANGUAGE='en_US:en' LANG='en_US.UTF-8' 
+
+# We make four distinct layers so if there are application changes, the library layers can be re-used
+COPY --from=builder --chown=185 /home/kogito/serverless-workflow-project/target/quarkus-app/lib/ /deployments/lib/
+COPY --from=builder --chown=185 /home/kogito/serverless-workflow-project/target/quarkus-app/*.jar /deployments/
+COPY --from=builder --chown=185 /home/kogito/serverless-workflow-project/target/quarkus-app/app/ /deployments/app/
+COPY --from=builder --chown=185 /home/kogito/serverless-workflow-project/target/quarkus-app/quarkus/ /deployments/quarkus/
+
+EXPOSE 8080
+USER 185
+
+# Disable Jolokia agent
+ENV AB_JOLOKIA_OFF=""
+
+ENV JAVA_OPTS="-Dquarkus.http.host=0.0.0.0 -Djava.util.logging.manager=org.jboss.logmanager.LogManager"
+ENV JAVA_APP_JAR="/deployments/quarkus-run.jar"
+
+ENTRYPOINT [ "/opt/jboss/container/java/run/run-java.sh" ]
+EOF
+}
+
 function parse_args {
-    while getopts ":i:b:r:n:m:w:c:hPS-:" opt; do
+    while getopts ":i:b:r:d:n:m:w:c:hPS-:" opt; do
         case $opt in
             h) usage; exit ;;
             P) args["no-persistence"]="YES" ;;
@@ -222,6 +274,7 @@ function parse_args {
             c) args["container-engine"]="$OPTARG" ;;
             b) args["builder-image"]="$OPTARG" ;;
             r) args["runtime-image"]="$OPTARG" ;;
+            d) args["dockerfile"]="$OPTARG" ;;
             -)
                 case "${OPTARG}" in
                     help)
@@ -259,6 +312,10 @@ function parse_args {
                         assert_optarg_not_empty "$OPTARG" || exit $?
                         args["runtime-image"]="${OPTARG#*=}"
                     ;;
+                    dockerfile=*)
+                        assert_optarg_not_empty "$OPTARG" || exit $?
+                        args["dockerfile"]="${OPTARG#*=}"
+                    ;;
                     container-engine=*)
                         assert_optarg_not_empty "$OPTARG" || exit $?
                         args["container-engine"]="${OPTARG#*=}"
@@ -291,6 +348,25 @@ function parse_args {
     
     # Create manifests directory if it doesn't exist
     mkdir -p "${args["manifests-directory"]}"
+    
+    # Resolve dockerfile path before any directory changes
+    if [[ -n "${args["dockerfile"]:-}" ]]; then
+        if [[ "${args["dockerfile"]}" = /* ]]; then
+            # Absolute path - use as is
+            args["dockerfile"]="${args["dockerfile"]}"
+        else
+            # Relative path - resolve from current working directory
+            args["dockerfile"]="$(realpath "${args["dockerfile"]}" 2>/dev/null || echo "$PWD/${args["dockerfile"]}")"
+        fi
+        
+        # Validate dockerfile exists
+        if [[ ! -f "${args["dockerfile"]}" ]]; then
+            log_error "Dockerfile not found: ${args["dockerfile"]}"
+            exit 28
+        fi
+        
+        log_info "Dockerfile resolved to: ${args["dockerfile"]}"
+    fi
 }
 
 function gen_manifests {
@@ -390,6 +466,8 @@ function build_image {
     log_info "Image name: $image_name"
     log_info "Tag: $tag"
     log_info "Container engine: $DETECTED_CONTAINER_ENGINE"
+    log_info "Builder image: ${args["builder-image"]}"
+    log_info "Runtime image: ${args["runtime-image"]}"
 
     # Base extensions that are always included
     local base_quarkus_extensions="\
@@ -430,11 +508,24 @@ function build_image {
         log_info "Added custom Maven args: ${MAVEN_ARGS_APPEND}"
     fi
 
-    # Validate Dockerfile exists
-    local dockerfile_path="$script_dir_path/../docker/osl.Dockerfile"
-    if [[ ! -f "$dockerfile_path" ]]; then
-        log_error "Dockerfile not found: $dockerfile_path"
-        return 20
+    # Set dockerfile path - use specified dockerfile or create temporary one from embedded content
+    local dockerfile_path
+    local temp_dockerfile_created=false
+    
+    if [[ -n "${args["dockerfile"]:-}" ]]; then
+        # Use pre-resolved dockerfile path from parse_args
+        dockerfile_path="${args["dockerfile"]}"
+        echo >&2 -e "${GREEN}INFO: Using custom dockerfile: $dockerfile_path${DEFAULT}"
+    else
+        # Create temporary dockerfile from embedded content
+        dockerfile_path="$(mktemp -t dockerfile.XXXXXX)"
+        temp_dockerfile_created=true
+        echo >&2 -e "${GREEN}INFO: Using embedded default dockerfile (temporary file: $dockerfile_path)${DEFAULT}"
+        
+        if ! create_default_dockerfile "$dockerfile_path"; then
+            log_error "Failed to create temporary dockerfile"
+            return 20
+        fi
     fi
 
     # Build specifically for linux/amd64 to ensure compatibility with OSL v1.35.0
@@ -452,10 +543,20 @@ function build_image {
     log_info "Starting container build (this may take several minutes)..."
     if ! container_engine build "${container_args[@]}" "${args["workflow-directory"]}"; then
         log_error "Container build failed"
+        # Retain temporary dockerfile for debugging if created
+        if [[ "$temp_dockerfile_created" == true ]]; then
+            log_info "Temporary dockerfile retained for debugging: $dockerfile_path"
+        fi
         return 21
     fi
     
     log_success "Container build completed successfully"
+    
+    # Clean up temporary dockerfile only on success
+    if [[ "$temp_dockerfile_created" == true ]]; then
+        rm -f "$dockerfile_path"
+        log_info "Cleaned up temporary dockerfile"
+    fi
 
     # Tag with git commit hash if available
     if ! git rev-parse --short=8 HEAD >/dev/null 2>&1; then
