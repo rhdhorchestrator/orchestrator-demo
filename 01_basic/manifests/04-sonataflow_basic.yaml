@@ -9,7 +9,11 @@ metadata:
   creationTimestamp: null
   labels:
     app: basic
+    app.kubernetes.io/component: serverless-workflow
+    app.kubernetes.io/managed-by: sonataflow-operator
+    app.kubernetes.io/name: basic
     sonataflow.org/workflow-app: basic
+    sonataflow.org/workflow-namespace: ""
   name: basic
 spec:
   flow:
@@ -65,11 +69,19 @@ spec:
         type: operation
   podTemplate:
     container:
-      image: quay.io/orchestrator/demo-basic
+      env:
+        - name: BACKSTAGE_NOTIFICATIONS_URL
+          valueFrom:
+            secretKeyRef:
+              key: BACKSTAGE_NOTIFICATIONS_URL
+              name: basic-secrets
+        - name: NOTIFICATIONS_BEARER_TOKEN
+          valueFrom:
+            secretKeyRef:
+              key: NOTIFICATIONS_BEARER_TOKEN
+              name: basic-secrets
+      image: quay.io/orchestrator/demo-basic:latest
       resources: {}
-      envFrom:
-        - secretRef:
-            name: basic-secrets
   resources:
     configMaps:
       - configMap:

@@ -16,5 +16,9 @@ metadata:
   creationTimestamp: null
   labels:
     app: basic
+    app.kubernetes.io/component: serverless-workflow
+    app.kubernetes.io/managed-by: sonataflow-operator
+    app.kubernetes.io/name: basic
     sonataflow.org/workflow-app: basic
+    sonataflow.org/workflow-namespace: ""
   name: basic-props
