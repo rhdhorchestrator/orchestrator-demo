@@ -11,6 +11,9 @@ data:
     # and see https://quarkus.io/guides/logging for documentation
     quarkus.log.category."org.apache.http".level=INFO
     quarkus.log.level=INFO
+
+    # enable persistence
+    kie.flyway.enabled = true
 kind: ConfigMap
 metadata:
   creationTimestamp: null
