@@ -44,26 +44,30 @@ function check_dependencies() {
     local missing_deps=()
     local required_tools=("kn-workflow" "yq" "git")
     
-    # Detect and validate container engine
-    if [[ -n "${args["container-engine"]:-}" ]]; then
-        # Use user-specified container engine
-        if ! command -v "${args["container-engine"]}" >/dev/null 2>&1; then
-            missing_deps+=("${args["container-engine"]}")
+    # Detect and validate container engine (skip if only generating manifests)
+    if [[ -z "${args["manifests-only"]:-}" ]]; then
+        if [[ -n "${args["container-engine"]:-}" ]]; then
+            # Use user-specified container engine
+            if ! command -v "${args["container-engine"]}" >/dev/null 2>&1; then
+                missing_deps+=("${args["container-engine"]}")
+            else
+                DETECTED_CONTAINER_ENGINE="${args["container-engine"]}"
+                log_info "Using specified container engine: ${args["container-engine"]}"
+            fi
         else
-            DETECTED_CONTAINER_ENGINE="${args["container-engine"]}"
-            log_info "Using specified container engine: ${args["container-engine"]}"
+            # Auto-detect container engine
+            if command -v docker >/dev/null 2>&1; then
+                DETECTED_CONTAINER_ENGINE="docker"
+                log_info "Auto-detected container engine: docker"
+            elif command -v podman >/dev/null 2>&1; then
+                DETECTED_CONTAINER_ENGINE="podman"
+                log_info "Auto-detected container engine: podman"
+            else
+                missing_deps+=("docker or podman")
+            fi
         fi
     else
-        # Auto-detect container engine
-        if command -v docker >/dev/null 2>&1; then
-            DETECTED_CONTAINER_ENGINE="docker"
-            log_info "Auto-detected container engine: docker"
-        elif command -v podman >/dev/null 2>&1; then
-            DETECTED_CONTAINER_ENGINE="podman"
-            log_info "Auto-detected container engine: podman"
-        else
-            missing_deps+=("docker or podman")
-        fi
+        log_info "Skipping container engine detection (--manifests-only flag used)"
     fi
     
     # Check for kubectl only if deploy flag is set
@@ -178,7 +182,7 @@ Usage:
     $script_name [flags]
 
 Flags:
-    -i|--image=<string> (required)       The full container image path to use for the workflow, e.g: quay.io/orchestrator/demo:latest.
+    -i|--image=<string> (required)       The full container image path to use for the workflow, e.g: quay.io/orchestrator/demo:latest. Required even with --manifests-only for manifest generation.
     -b|--builder-image=<string>          Overrides the image to use for building the workflow image. Default: $DEFAULT_BUILDER_IMAGE.
     -r|--runtime-image=<string>          Overrides the image to use for running the workflow. Default: $DEFAULT_RUNTIME_IMAGE.
     -d|--dockerfile=<string>             Path to a custom Dockerfile to use for building the workflow image (absolute or relative to current directory). Default: uses embedded dockerfile.
@@ -188,6 +192,7 @@ Flags:
     -c|--container-engine=<string>       Container engine to use (docker or podman). Default: auto-detect.
     -P|--no-persistence                  Skips adding persistence configuration to the sonataflow CR.
     -S|--non-quarkus                     Use non-Quarkus layout where workflow resources are in the project root instead of src/main/resources.
+       --manifests-only                  Only generate manifests, skip building the image.
        --push                            Pushes the workflow image to the container registry.
        --deploy                          Deploys the application.
     -h|--help                            Prints this help message.
@@ -211,6 +216,7 @@ args["dockerfile"]=""
 args["container-engine"]=""
 args["no-persistence"]=""
 args["non-quarkus"]=""
+args["manifests-only"]=""
 args["workflow-directory"]="$PWD"
 args["manifests-directory"]="$PWD/manifests"
 
@@ -293,6 +299,8 @@ function parse_args {
                         args["no-persistence"]="YES" ;;
                     non-quarkus)
                         args["non-quarkus"]="YES" ;;
+                    manifests-only)
+                        args["manifests-only"]="YES" ;;
                     image=*)
                         assert_optarg_not_empty "$OPTARG" || exit $?
                         args["image"]="${OPTARG#*=}"
@@ -662,7 +670,11 @@ function deploy_manifests {
 
 # Main execution
 function main {
-    log_info "=== Starting workflow build process ==="
+    if [[ -n "${args["manifests-only"]:-}" ]]; then
+        log_info "=== Starting manifest generation ==="
+    else
+        log_info "=== Starting workflow build process ==="
+    fi
     
     parse_args "$@"
     
@@ -670,17 +682,25 @@ function main {
     
     gen_manifests
     
-    build_image
-    
-    if [[ -n "${args["push"]}" ]]; then
-        push_image
+    if [[ -z "${args["manifests-only"]:-}" ]]; then
+        build_image
+        
+        if [[ -n "${args["push"]}" ]]; then
+            push_image
+        fi
+    else
+        log_info "Skipping image build (--manifests-only flag used)"
     fi
     
     if [[ -n "${args["deploy"]}" ]]; then
         deploy_manifests
     fi
     
-    log_success "=== Workflow build process completed successfully ==="
+    if [[ -n "${args["manifests-only"]:-}" ]]; then
+        log_success "=== Manifest generation completed successfully ==="
+    else
+        log_success "=== Workflow build process completed successfully ==="
+    fi
 }
 
 # Run main function with all arguments
