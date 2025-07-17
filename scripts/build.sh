@@ -105,10 +105,14 @@ function findw {
 function validate_image_name() {
     local image="$1"
     
-    # Basic validation for image name format
-    if [[ ! "$image" =~ ^[a-zA-Z0-9._/-]+:[a-zA-Z0-9._-]+$ ]]; then
+    # Validate image name format - handles registry with port, namespaces, and tags
+    # Examples:
+    #   - registry.com/image:tag
+    #   - registry.com:443/namespace/image:tag
+    #   - localhost:5000/project/image:latest
+    if [[ ! "$image" =~ ^[a-zA-Z0-9._-]+(\.[a-zA-Z0-9._-]+)*(:[0-9]+)?(/[a-zA-Z0-9._-]+)+:[a-zA-Z0-9._-]+$ ]]; then
         log_error "Invalid image name format: $image"
-        log_error "Expected format: registry/image:tag"
+        log_error "Expected format: [registry[:port]/]namespace/image:tag"
         return 14
     fi
 }
