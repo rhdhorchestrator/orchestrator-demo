@@ -4,8 +4,10 @@ set -euo pipefail
 [[ -n "${DEBUGME:-}" ]] && set -x
 
 script_name="${BASH_SOURCE:-$0}"
-script_path="$(realpath "$script_name")"
-script_dir_path="$(dirname "$script_path")"
+
+# Default container images
+DEFAULT_BUILDER_IMAGE="registry.redhat.io/openshift-serverless-1/logic-swf-builder-rhel8:1.36.0-8"
+DEFAULT_RUNTIME_IMAGE="registry.access.redhat.com/ubi9/openjdk-17:1.21-2"
 
 # Logger functions
 RED='\033[0;31m'
@@ -173,8 +175,8 @@ Usage:
 
 Flags:
     -i|--image=<string> (required)       The full container image path to use for the workflow, e.g: quay.io/orchestrator/demo:latest.
-    -b|--builder-image=<string>          Overrides the image to use for building the workflow image.
-    -r|--runtime-image=<string>          Overrides the image to use for running the workflow.
+    -b|--builder-image=<string>          Overrides the image to use for building the workflow image. Default: $DEFAULT_BUILDER_IMAGE.
+    -r|--runtime-image=<string>          Overrides the image to use for running the workflow. Default: $DEFAULT_RUNTIME_IMAGE.
     -d|--dockerfile=<string>             Path to a custom Dockerfile to use for building the workflow image (absolute or relative to current directory). Default: uses embedded dockerfile.
     -n|--namespace=<string>              The target namespace where the manifests will be applied. Default: current namespace.
     -m|--manifests-directory=<string>    The operator manifests will be generated inside the specified directory. Default: 'manifests' directory in the current directory.
@@ -199,8 +201,8 @@ args["image"]=""
 args["deploy"]=""
 args["push"]=""
 args["namespace"]=""
-args["builder-image"]=""
-args["runtime-image"]=""
+args["builder-image"]="$DEFAULT_BUILDER_IMAGE"
+args["runtime-image"]="$DEFAULT_RUNTIME_IMAGE"
 args["dockerfile"]=""
 args["container-engine"]=""
 args["no-persistence"]=""
@@ -218,8 +220,7 @@ function create_default_dockerfile() {
 ARG BUILDER_IMAGE
 ARG RUNTIME_IMAGE
 
-FROM ${BUILDER_IMAGE:-registry.redhat.io/openshift-serverless-1/logic-swf-builder-rhel8:1.36.0-8} AS builder
-#FROM ${BUILDER_IMAGE:-quay.io/orchestrator/logic-swf-builder-rhel8:1.36.0-disconnected} AS builder
+FROM ${BUILDER_IMAGE} AS builder
 
 # Variables that can be overridden by the builder
 # To add a Quarkus extension to your application
@@ -237,7 +238,7 @@ RUN /home/kogito/launch/build-app.sh
 #=============================
 # Runtime
 #=============================
-FROM ${RUNTIME_IMAGE:-registry.access.redhat.com/ubi9/openjdk-17:1.21-2}
+FROM ${RUNTIME_IMAGE}
 
 ENV LANGUAGE='en_US:en' LANG='en_US.UTF-8' 
 
@@ -465,6 +466,8 @@ function build_image {
     log_info "Image name: $image_name"
     log_info "Tag: $tag"
     log_info "Container engine: $DETECTED_CONTAINER_ENGINE"
+    log_info "Builder image: ${args["builder-image"]}"
+    log_info "Runtime image: ${args["runtime-image"]}"
 
     # Base extensions that are always included
     local base_quarkus_extensions="\
