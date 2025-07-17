@@ -175,7 +175,7 @@ Flags:
     -i|--image=<string> (required)       The full container image path to use for the workflow, e.g: quay.io/orchestrator/demo:latest.
     -b|--builder-image=<string>          Overrides the image to use for building the workflow image.
     -r|--runtime-image=<string>          Overrides the image to use for running the workflow.
-    -d|--dockerfile=<string>             Absolute path to a custom Dockerfile to use for building the workflow image. Default: uses embedded dockerfile.
+    -d|--dockerfile=<string>             Path to a custom Dockerfile to use for building the workflow image (absolute or relative to current directory). Default: uses embedded dockerfile.
     -n|--namespace=<string>              The target namespace where the manifests will be applied. Default: current namespace.
     -m|--manifests-directory=<string>    The operator manifests will be generated inside the specified directory. Default: 'manifests' directory in the current directory.
     -w|--workflow-directory=<string>     Path to the directory containing the workflow's files. For Quarkus projects, this should be the directory containing 'src'. For non-Quarkus layout, this should be the directory containing the workflow files directly. Default: current directory.
@@ -347,6 +347,25 @@ function parse_args {
     
     # Create manifests directory if it doesn't exist
     mkdir -p "${args["manifests-directory"]}"
+    
+    # Resolve dockerfile path before any directory changes
+    if [[ -n "${args["dockerfile"]:-}" ]]; then
+        if [[ "${args["dockerfile"]}" = /* ]]; then
+            # Absolute path - use as is
+            args["dockerfile"]="${args["dockerfile"]}"
+        else
+            # Relative path - resolve from current working directory
+            args["dockerfile"]="$(realpath "${args["dockerfile"]}" 2>/dev/null || echo "$PWD/${args["dockerfile"]}")"
+        fi
+        
+        # Validate dockerfile exists
+        if [[ ! -f "${args["dockerfile"]}" ]]; then
+            log_error "Dockerfile not found: ${args["dockerfile"]}"
+            exit 28
+        fi
+        
+        log_info "Dockerfile resolved to: ${args["dockerfile"]}"
+    fi
 }
 
 function gen_manifests {
@@ -491,24 +510,14 @@ function build_image {
     local temp_dockerfile_created=false
     
     if [[ -n "${args["dockerfile"]:-}" ]]; then
-        # Use specified dockerfile (handle both absolute and relative paths)
-        if [[ "${args["dockerfile"]}" = /* ]]; then
-            dockerfile_path="${args["dockerfile"]}"
-        else
-            dockerfile_path="$(realpath "${args["dockerfile"]}" 2>/dev/null || echo "${args["workflow-directory"]}/${args["dockerfile"]}")"
-        fi
-        log_info "Using specified dockerfile: ${args["dockerfile"]}"
-        
-        # Validate custom Dockerfile exists
-        if [[ ! -f "$dockerfile_path" ]]; then
-            log_error "Dockerfile not found: $dockerfile_path"
-            return 20
-        fi
+        # Use pre-resolved dockerfile path from parse_args
+        dockerfile_path="${args["dockerfile"]}"
+        echo >&2 -e "${GREEN}INFO: Using custom dockerfile: $dockerfile_path${DEFAULT}"
     else
         # Create temporary dockerfile from embedded content
         dockerfile_path="$(mktemp -t dockerfile.XXXXXX)"
         temp_dockerfile_created=true
-        log_info "Creating temporary dockerfile from embedded content: $dockerfile_path"
+        echo >&2 -e "${GREEN}INFO: Using embedded default dockerfile (temporary file: $dockerfile_path)${DEFAULT}"
         
         if ! create_default_dockerfile "$dockerfile_path"; then
             log_error "Failed to create temporary dockerfile"
