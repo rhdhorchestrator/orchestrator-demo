@@ -217,6 +217,15 @@ args["manifests-directory"]="$PWD/manifests"
 # Global variable to store the detected container engine
 DETECTED_CONTAINER_ENGINE=""
 
+function create_default_dockerignore() {
+    local dockerignore_path="$1"
+    cat > "$dockerignore_path" << 'EOF'
+*
+!LICENSE
+!src/main/java/**/*
+!src/main/resources/**/*
+EOF
+}
 # Function to create default dockerfile content
 function create_default_dockerfile() {
     local dockerfile_path="$1"
@@ -514,6 +523,7 @@ function build_image {
 
     # Set dockerfile path - use specified dockerfile or create temporary one from embedded content
     local dockerfile_path
+    local dockerignore_path
     local temp_dockerfile_created=false
     
     if [[ -n "${args["dockerfile"]:-}" ]]; then
@@ -523,11 +533,17 @@ function build_image {
     else
         # Create temporary dockerfile from embedded content
         dockerfile_path="$(mktemp -t dockerfile.XXXXXX)"
+        dockerignore_path="${dockerfile_path}.dockerignore"
         temp_dockerfile_created=true
-        echo >&2 -e "${GREEN}INFO: Using embedded default dockerfile (temporary file: $dockerfile_path)${DEFAULT}"
+        echo >&2 -e "${GREEN}INFO: Using embedded default dockerfile (temporary file: $dockerfile_path and $dockerignore_path)${DEFAULT}"
         
         if ! create_default_dockerfile "$dockerfile_path"; then
             log_error "Failed to create temporary dockerfile"
+            return 20
+        fi
+
+        if ! create_default_dockerignore "$dockerignore_path"; then
+            log_error "Failed to create temporary dockerignore"
             return 20
         fi
     fi
@@ -549,7 +565,7 @@ function build_image {
         log_error "Container build failed"
         # Retain temporary dockerfile for debugging if created
         if [[ "$temp_dockerfile_created" == true ]]; then
-            log_info "Temporary dockerfile retained for debugging: $dockerfile_path"
+            log_info "Temporary dockerfile retained for debugging: $dockerfile_path and $dockerignore_path"
         fi
         return 21
     fi
@@ -559,6 +575,7 @@ function build_image {
     # Clean up temporary dockerfile only on success
     if [[ "$temp_dockerfile_created" == true ]]; then
         rm -f "$dockerfile_path"
+        rm -f "$dockerignore_path"
         log_info "Cleaned up temporary dockerfile"
     fi
 

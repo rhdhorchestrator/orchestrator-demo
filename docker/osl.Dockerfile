@@ -2,7 +2,6 @@ ARG BUILDER_IMAGE
 ARG RUNTIME_IMAGE
 
 FROM ${BUILDER_IMAGE:-registry.redhat.io/openshift-serverless-1/logic-swf-builder-rhel8:1.36.0-8} AS builder
-#FROM ${BUILDER_IMAGE:-quay.io/orchestrator/logic-swf-builder-rhel8:1.36.0-disconnected} AS builder
 
 # Variables that can be overridden by the builder
 # To add a Quarkus extension to your application
