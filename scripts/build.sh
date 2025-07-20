@@ -181,7 +181,7 @@ Flags:
     -i|--image=<string> (required)       The full container image path to use for the workflow, e.g: quay.io/orchestrator/demo:latest.
     -b|--builder-image=<string>          Overrides the image to use for building the workflow image. Default: $DEFAULT_BUILDER_IMAGE.
     -r|--runtime-image=<string>          Overrides the image to use for running the workflow. Default: $DEFAULT_RUNTIME_IMAGE.
-    -d|--dockerfile=<string>             Path to a custom Dockerfile to use for building the workflow image (absolute or relative to current directory). Default: uses embedded dockerfile.
+    -d|--dockerfile=<string>             Path to a custom Dockerfile to use for building the workflow image (absolute or relative to current directory). Default: uses embedded dockerfile with auto-generated .dockerignore.
     -n|--namespace=<string>              The target namespace where the manifests will be applied. Default: current namespace.
     -m|--manifests-directory=<string>    The operator manifests will be generated inside the specified directory. Default: 'manifests' directory in the current directory.
     -w|--workflow-directory=<string>     Path to the directory containing the workflow's files. For Quarkus projects, this should be the directory containing 'src'. For non-Quarkus layout, this should be the directory containing the workflow files directly. Default: current directory.
@@ -197,6 +197,7 @@ Notes:
     - Use --non-quarkus for non-Quarkus projects where workflow files (.sw.yaml, schemas/, etc.) are in the project root directory.
     - Without --non-quarkus, the script expects Quarkus project structure with resources in src/main/resources/.
     - Use --container-engine to specify docker or podman. If not specified, the script will auto-detect which one is available.
+    - When using the embedded dockerfile (default), a .dockerignore file is automatically created. When using --dockerfile, ensure a .dockerignore file is available in the same directory for optimal build performance.
 EOF
 }
 
