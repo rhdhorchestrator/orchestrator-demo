@@ -21,11 +21,11 @@ spec:
       failOnValidationErrors: true
       schema: schemas/basic__main-schema.json
     functions:
-      - name: createNotification
-        operation: notifications#createNotification
-        type: rest
       - name: print
         operation: sysout
+        type: custom
+      - name: customBasic
+        operation: service:java:basic.Basic::BasicMethod
         type: custom
       - name: successResult
         operation: '{ "result": { "message": "Project " + .projectName + " active", "outputs":[] } }'
@@ -39,24 +39,16 @@ spec:
               useResults: true
             functionRef:
               arguments:
-                payload:
-                  description: '"Project " + .projectName'
-                  severity: normal
-                  title: '"Project " + .projectName'
-                  topic: basic
-                recipients:
-                  entityRef: .recipients
-                  type: entity
+                message: '"Project " + .projectName'
               invoke: sync
-              refName: createNotification
-            name: Create notification
+              refName: print
           - actionDataFilter:
               useResults: true
             functionRef:
               arguments:
-                message: '"Project " + .projectName'
+                project: .projectName
               invoke: sync
-              refName: print
+              refName: customBasic
           - actionDataFilter:
               useResults: true
             functionRef:
@@ -69,17 +61,6 @@ spec:
         type: operation
   podTemplate:
     container:
-      env:
-        - name: BACKSTAGE_NOTIFICATIONS_URL
-          valueFrom:
-            secretKeyRef:
-              key: BACKSTAGE_NOTIFICATIONS_URL
-              name: basic-secrets
-        - name: NOTIFICATIONS_BEARER_TOKEN
-          valueFrom:
-            secretKeyRef:
-              key: NOTIFICATIONS_BEARER_TOKEN
-              name: basic-secrets
       image: quay.io/orchestrator/demo-basic:latest
       resources: {}
   resources:

@@ -1,18 +1,9 @@
 # Basic workflow
-The basic workflow is a hello world kind of workflow: it send a notification and log into the console the input project name
-
-## Workflow application configuration
-Application properties can be initialized from environment variables before running the application:
-
-| Environment variable          | Description                                                 | Mandatory | Default value |
-| ----------------------------- | ----------------------------------------------------------- | --------- | ------------- |
-| `BACKSTAGE_NOTIFICATIONS_URL` | The backstage server URL for notifications                  | ✅         |               |
-| `NOTIFICATIONS_BEARER_TOKEN`  | The authorization bearer token to use to send notifications | ✅         |               |
+The basic workflow is a hello world kind of workflow: it log a message into the console the input project name and uses a custom java class to do the same
 
 
 ## Input
 - `OCP project to create` [required] - the OCP project to be created on the OCP cluster.
-- `Recipients` - the recipients of the notifications, automatically populated thanks to the custom UI plugin.
 
 ## Workflow diagram
 ![Basic diagram](src/main/resources/basic.svg)

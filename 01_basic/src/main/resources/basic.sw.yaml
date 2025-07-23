@@ -7,15 +7,14 @@ dataInputSchema: schemas/basic__main-schema.json
 extensions:
   - extensionid: workflow-output-schema
     outputSchema: schemas/workflow-output-schema.json
-  - extensionid: workflow-uri-definitions
-    definitions:
-      notifications: "https://raw.githubusercontent.com/rhdhorchestrator/serverless-workflows/main/workflows/shared/specs/notifications-openapi.yaml"
 functions:
-  - name: createNotification
-    operation: notifications#createNotification
   - name: print
     type: custom
     operation: sysout
+  - name: customBasic
+    type: custom
+    operation: "service:java:basic.Basic::BasicMethod"
+  
   - name: successResult
     type: expression
     operation: '{
@@ -29,22 +28,14 @@ states:
   - name: Print inputs
     type: operation
     actions:
-      - name: "Create notification"
-        functionRef:
-          refName: createNotification
-          arguments:
-            recipients:
-              type: "entity"
-              entityRef: .recipients
-            payload:
-              title: '"Project " + .projectName'
-              description: '"Project " + .projectName'
-              topic: "basic"
-              severity: "normal"
       - functionRef:
           refName: print
           arguments:
             message: '"Project " + .projectName'
+      - functionRef:
+          refName: customBasic
+          arguments:
+            project: .projectName
       - name: setOutput
         functionRef:
           refName: successResult
