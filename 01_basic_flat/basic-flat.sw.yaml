@@ -1,0 +1,34 @@
+id: basic-flat
+version: "1.0"
+specVersion: "0.8"
+name: "basic-flat"
+description: Print input value
+dataInputSchema: schemas/basic__main-schema.json
+extensions:
+  - extensionid: workflow-output-schema
+    outputSchema: schemas/workflow-output-schema.json
+functions:
+  - name: print
+    type: custom
+    operation: sysout
+  - name: successResult
+    type: expression
+    operation: '{
+      "result": {
+      "message": "Project " + .projectName + " active",
+      "outputs":[]
+      }
+      }'
+start: "Print inputs"
+states:
+  - name: Print inputs
+    type: operation
+    actions:
+      - functionRef:
+          refName: print
+          arguments:
+            message: '"Project " + .projectName'
+      - name: setOutput
+        functionRef:
+          refName: successResult
+    end: true

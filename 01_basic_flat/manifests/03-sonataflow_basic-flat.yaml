@@ -1,0 +1,74 @@
+apiVersion: sonataflow.org/v1alpha08
+kind: SonataFlow
+metadata:
+  annotations:
+    sonataflow.org/description: Print input value
+    sonataflow.org/expressionLang: jq
+    sonataflow.org/profile: gitops
+    sonataflow.org/version: "1.0"
+  creationTimestamp: null
+  labels:
+    app: basic-flat
+    app.kubernetes.io/component: serverless-workflow
+    app.kubernetes.io/managed-by: sonataflow-operator
+    app.kubernetes.io/name: basic-flat
+    sonataflow.org/workflow-app: basic-flat
+    sonataflow.org/workflow-namespace: ""
+  name: basic-flat
+spec:
+  flow:
+    dataInputSchema:
+      failOnValidationErrors: true
+      schema: schemas/basic__main-schema.json
+    functions:
+      - name: print
+        operation: sysout
+        type: custom
+      - name: successResult
+        operation: '{ "result": { "message": "Project " + .projectName + " active", "outputs":[] } }'
+        type: expression
+    start:
+      stateName: Print inputs
+    states:
+      - actionMode: sequential
+        actions:
+          - actionDataFilter:
+              useResults: true
+            functionRef:
+              arguments:
+                message: '"Project " + .projectName'
+              invoke: sync
+              refName: print
+          - actionDataFilter:
+              useResults: true
+            functionRef:
+              invoke: sync
+              refName: successResult
+            name: setOutput
+        end:
+          terminate: true
+        name: Print inputs
+        type: operation
+  podTemplate:
+    container:
+      image: quay.io/orchestrator/demo-basic-flat:latest
+      resources: {}
+  resources:
+    configMaps:
+      - configMap:
+          name: 01-basic-flat-resources-schemas
+        workflowPath: schemas
+  persistence:
+    postgresql:
+      secretRef:
+        name: sonataflow-psql-postgresql
+        userKey: postgres-username
+        passwordKey: postgres-password
+      serviceRef:
+        name: sonataflow-psql-postgresql
+        port: 5432
+        databaseName: sonataflow
+        databaseSchema: basic-flat
+status:
+  address: {}
+  lastTimeRecoverAttempt: null
