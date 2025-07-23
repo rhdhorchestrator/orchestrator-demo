@@ -12,22 +12,10 @@ data:
             "description": "OCP project to create",
             "type": "string",
             "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
-          },
-          "recipients": {
-            "title": "Recipients",
-            "type": "array",
-            "description": "A list of recipients for the notification in the format of 'user:<namespace>/<username>' or 'group:<namespace>/<groupname>', i.e. 'user:default/jsmith'",
-            "items": {
-              "title": "Recipient",
-              "type": "string",
-              "pattern": "^(user|group):[a-z0-9]([-a-z0-9]*[a-z0-9])?/([a-z0-9]([-a-z0-9]*[a-z0-9])?)$"
-            },
-            "minItems": 1
           }
         },
         "required": [
-          "projectName",
-          "recipients"
+          "projectName"
         ]
       }
   workflow-output-schema.json: |-

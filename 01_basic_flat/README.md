@@ -1,35 +1,36 @@
-# Basic workflow
-The basic workflow is a hello world kind of workflow: it log a message into the console the input project name and uses a custom java class to do the same
-
+# Basic workflow - flat version
+The basic workflow is a hello world kind of workflow: it log a message into the console the input project name.
+This version as a flat or non-quarkus layout, hence we are not demonstrating the usage of custom java class.
 
 ## Input
 - `OCP project to create` [required] - the OCP project to be created on the OCP cluster.
+- `Recipients` - the recipients of the notifications, automatically populated thanks to the custom UI plugin.
 
 ## Workflow diagram
-![Basic diagram](src/main/resources/basic.svg)
+![Basic diagram](src/main/resources/basic-flat.svg)
 
 ## Installation
 To install the workflow, apply the Kubernetes manifests located in the [`manifests`](./manifests/) directory.  
 These manifests are organized and numbered according to their required deployment order.
 
-> **Note**: Before applying the manifests, ensure the PostgreSQL secret references are correctly configured in the [SonataFlow Custom Resource](./manifests/03-sonataflow_basic.yaml).
+> **Note**: Before applying the manifests, ensure the PostgreSQL secret references are correctly configured in the [SonataFlow Custom Resource](./manifests/03-sonataflow_basic-flat.yaml).
 
 ### Deploy the Workflow
 
 ```bash
-oc apply -n sonataflow-infra -f ./01_basic/manifests
+oc apply -n sonataflow-infra -f ./01_basic_flat/manifests
 ```
 
 ### Verify the Deployment
 To confirm the workflow was deployed successfully, run:
 ```bash
-oc get sonataflow -n sonataflow-infra basic
+oc get sonataflow -n sonataflow-infra basic-flat
 ```
 
 Expected output:
 ```
 NAME    PROFILE   VERSION   URL   READY   REASON
-basic   gitops    1.0             True
+basic-flat   gitops    1.0             True
 ```
 
 ## Building the workflow
@@ -64,7 +65,7 @@ Notes:
 Use the scripts:
 1. Build the image and generate the manifests:
 ```
-../scripts/build.sh --image=quay.io/orchestrator/demo-basic
+../scripts/build.sh --image=quay.io/orchestrator/demo-basic-flat
 ```
 
 The manifests location will be displayed by the script.
@@ -84,15 +85,5 @@ oc -n ${TARGET_NS} apply -f <path to manifests folder>/01-sonataflow_*.yaml
 
 All the previous steps can be done together by running:
 ```bash
-../scripts/build.sh --image=quay.io/orchestrator/demo-basic --deploy
-```
-
-Once the manifests are deployed, set the environments variables needed:
-```bash
-TARGET_NS=sonataflow-infra
-WORKFLOW_NAME=basic
-BACKSTAGE_NOTIFICATIONS_URL=http://backstage-backstage.rhdh-operator
-oc -n ${TARGET_NS} patch secret "${WORKFLOW_NAME}-secrets" --type merge -p '{"data": { "NOTIFICATIONS_BEARER_TOKEN": "'$(oc get secrets -n rhdh-operator backstage-backend-auth-secret -o go-template='{{ .data.BACKEND_SECRET  }}')'"}}'
-
-oc -n ${TARGET_NS} patch sonataflow "${WORKFLOW_NAME}" --type merge -p '{"spec": { "podTemplate": { "container": { "env": [{"name": "BACKSTAGE_NOTIFICATIONS_URL",  "value": "'${BACKSTAGE_NOTIFICATIONS_URL}'"}]}}}}'
+../scripts/build.sh --image=quay.io/orchestrator/demo-basic-flat --deploy -S
 ```

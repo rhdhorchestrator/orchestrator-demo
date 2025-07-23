@@ -1,7 +1,7 @@
-id: basic
+id: basic-flat
 version: "1.0"
 specVersion: "0.8"
-name: "basic"
+name: "basic-flat"
 description: Print input value
 dataInputSchema: schemas/basic__main-schema.json
 extensions:
@@ -11,10 +11,6 @@ functions:
   - name: print
     type: custom
     operation: sysout
-  - name: customBasic
-    type: custom
-    operation: "service:java:basic.Basic::BasicMethod"
-  
   - name: successResult
     type: expression
     operation: '{
@@ -32,10 +28,6 @@ states:
           refName: print
           arguments:
             message: '"Project " + .projectName'
-      - functionRef:
-          refName: customBasic
-          arguments:
-            project: .projectName
       - name: setOutput
         functionRef:
           refName: successResult

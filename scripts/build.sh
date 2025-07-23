@@ -181,7 +181,7 @@ Flags:
     -i|--image=<string> (required)       The full container image path to use for the workflow, e.g: quay.io/orchestrator/demo:latest.
     -b|--builder-image=<string>          Overrides the image to use for building the workflow image. Default: $DEFAULT_BUILDER_IMAGE.
     -r|--runtime-image=<string>          Overrides the image to use for running the workflow. Default: $DEFAULT_RUNTIME_IMAGE.
-    -d|--dockerfile=<string>             Path to a custom Dockerfile to use for building the workflow image (absolute or relative to current directory). Default: uses embedded dockerfile with auto-generated .dockerignore.
+    -d|--dockerfile=<string>             Path to a custom Dockerfile to use for building the workflow image (absolute or relative to current directory). Default: uses embedded dockerfile.
     -n|--namespace=<string>              The target namespace where the manifests will be applied. Default: current namespace.
     -m|--manifests-directory=<string>    The operator manifests will be generated inside the specified directory. Default: 'manifests' directory in the current directory.
     -w|--workflow-directory=<string>     Path to the directory containing the workflow's files. For Quarkus projects, this should be the directory containing 'src'. For non-Quarkus layout, this should be the directory containing the workflow files directly. Default: current directory.
@@ -197,7 +197,6 @@ Notes:
     - Use --non-quarkus for non-Quarkus projects where workflow files (.sw.yaml, schemas/, etc.) are in the project root directory.
     - Without --non-quarkus, the script expects Quarkus project structure with resources in src/main/resources/.
     - Use --container-engine to specify docker or podman. If not specified, the script will auto-detect which one is available.
-    - When using the embedded dockerfile (default), a .dockerignore file is automatically created. When using --dockerfile, ensure a .dockerignore file is available in the same directory for optimal build performance.
 EOF
 }
 
@@ -245,9 +244,21 @@ ENV QUARKUS_EXTENSIONS=${QUARKUS_EXTENSIONS}
 ARG MAVEN_ARGS_APPEND
 ENV MAVEN_ARGS_APPEND=${MAVEN_ARGS_APPEND}
 
-COPY --chown=1001 . .
+# Copy from build context to skeleton resources project
+COPY --chown=1001 . ./resources/
+RUN ls -la ./resources
+RUN ls -la .
+RUN ls -la ./src/main/resources
 
-RUN /home/kogito/launch/build-app.sh
+ENV swf_home_dir=/home/kogito/serverless-workflow-project
+# In case of quarkus layout, flatten the directory
+RUN if [[ -d "./resources/src" ]]; then cp -r ./resources/src/* ./src/; fi
+RUN if [[ -d "./resources/src" ]]; then mv ./resources/src/main/resources/* ./resources/.; fi
+
+RUN ls -la ./resources
+RUN ls -la .
+
+RUN /home/kogito/launch/build-app.sh ./resources
 
 #=============================
 # Runtime
@@ -387,17 +398,15 @@ function gen_manifests {
     log_info "=== Generating Kubernetes manifests ==="
     
     local res_dir_path
-    if [[ -n "${args["non-quarkus"]:-}" ]]; then
-        res_dir_path="${args["workflow-directory"]}"
-        log_info "Using non-Quarkus layout: resources in project root"
-    else
-        res_dir_path="${args["workflow-directory"]}/src/main/resources"
-        log_info "Using Quarkus layout: resources in src/main/resources"
-    fi
+    res_dir_path="${args["workflow-directory"]}"
+    
     
     # Validate resource directory exists
     validate_directory "$res_dir_path" "Workflow resources"
-    
+
+    log_info "Remove any target folder from: $res_dir_path"
+    find $res_dir_path -type d -name target -exec rm -rf {} +
+
     local workflow_id
     workflow_id="$(get_workflow_id "$res_dir_path")"
     log_info "Found workflow ID: $workflow_id"
@@ -416,6 +425,11 @@ function gen_manifests {
     else
         gen_manifest_args+=(--namespace="${args["namespace"]}")
         log_info "Generating manifests for namespace: ${args["namespace"]}"
+    fi
+    
+    if [[ -z "${args["non-quarkus"]:-}" ]]; then
+        cd src/main/resources
+        log_info "Generating manifests from: $res_dir_path/src/main/resources"
     fi
     
     log_info "Running: kn-workflow gen-manifest ${gen_manifest_args[*]}"
@@ -530,23 +544,30 @@ function build_image {
     if [[ -n "${args["dockerfile"]:-}" ]]; then
         # Use pre-resolved dockerfile path from parse_args
         dockerfile_path="${args["dockerfile"]}"
-        echo >&2 -e "${GREEN}INFO: Using custom dockerfile: $dockerfile_path${DEFAULT}"
+        log_info "Using custom dockerfile: $dockerfile_path${DEFAULT}"
     else
         # Create temporary dockerfile from embedded content
         dockerfile_path="$(mktemp -t dockerfile.XXXXXX)"
         dockerignore_path="${dockerfile_path}.dockerignore"
+
         temp_dockerfile_created=true
-        echo >&2 -e "${GREEN}INFO: Using embedded default dockerfile (temporary file: $dockerfile_path and $dockerignore_path)${DEFAULT}"
+        log_info "Using embedded default dockerfile (temporary file: $dockerfile_path)${DEFAULT}"
         
         if ! create_default_dockerfile "$dockerfile_path"; then
             log_error "Failed to create temporary dockerfile"
             return 20
         fi
 
-        if ! create_default_dockerignore "$dockerignore_path"; then
-            log_error "Failed to create temporary dockerignore"
-            return 20
+        if [[ -z "${args["non-quarkus"]:-}" ]]; then
+            log_info "Using quarkus layout, creating temporary file $dockerignore_path"
+            dockerignore_path="${dockerfile_path}.dockerignore"
+            if ! create_default_dockerignore "$dockerignore_path"; then
+                log_error "Failed to create temporary dockerignore"
+                return 20
+            fi
         fi
+
+        
     fi
 
     # Build specifically for linux/amd64 to ensure compatibility with OSL v1.35.0
@@ -562,11 +583,12 @@ function build_image {
     [[ -n "${args["runtime-image"]:-}" ]] && container_args+=(--build-arg="RUNTIME_IMAGE=${args["runtime-image"]}")
 
     log_info "Starting container build (this may take several minutes)..."
-    if ! container_engine build "${container_args[@]}" "${args["workflow-directory"]}"; then
+    echo "container_engine build --progress=plain --no-cache ${container_args[@]} " ${args["workflow-directory"]}
+    if ! container_engine build --progress=plain --no-cache "${container_args[@]}" "${args["workflow-directory"]}"; then
         log_error "Container build failed"
         # Retain temporary dockerfile for debugging if created
         if [[ "$temp_dockerfile_created" == true ]]; then
-            log_info "Temporary dockerfile retained for debugging: $dockerfile_path and $dockerignore_path"
+            log_info "Temporary dockerfile retained for debugging: $dockerfile_path and, if created, $dockerignore_path"
         fi
         return 21
     fi
@@ -576,7 +598,9 @@ function build_image {
     # Clean up temporary dockerfile only on success
     if [[ "$temp_dockerfile_created" == true ]]; then
         rm -f "$dockerfile_path"
-        rm -f "$dockerignore_path"
+        if [[ -z "${args["non-quarkus"]:-}" ]]; then
+            rm -f "$dockerignore_path"
+        fi
         log_info "Cleaned up temporary dockerfile"
     fi
 
