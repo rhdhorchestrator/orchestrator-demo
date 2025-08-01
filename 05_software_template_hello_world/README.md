@@ -94,7 +94,7 @@ Notes:
 
 1. Build the image and generate the manifests from workflow's directory (replace the target image):
 ```
-../../scripts/build.sh --image=quay.io/orchestrator/demo-software-template-hello-world
+../../scripts/build.sh --image=quay.io/orchestrator/demo-software-template-hello-world -w workflow
 ```
 
 The manifests location will be displayed by the script, or at the given location by the `--manifests-directory` flag
