@@ -221,6 +221,10 @@ The script respects these environment variables:
 | `MAVEN_ARGS_APPEND` | Additional Maven build arguments | `-DskipTests=true` |
 | `DEBUGME` | Enable debug output | `DEBUGME=1` |
 
+Those environments variables can be overriden when running the script, e.g, to set a proxy when using mvn in the builder image:
+```
+MAVEN_ARGS_APPEND="-Dhttp.proxyHost=[PROXY_SERVER] -Dhttp.proxyPort=[PROXY_PORT] -Dhttp.nonProxyHosts=[PROXY_BYPASS_IP]" ./scripts/build.sh --image=...
+```
 ## 📁 Project Layouts
 
 ### Quarkus Layout (Default)
