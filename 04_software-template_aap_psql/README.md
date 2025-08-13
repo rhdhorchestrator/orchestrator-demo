@@ -22,7 +22,7 @@ See [demo recording](https://www.youtube.com/watch?v=ncpKtLaij9g).
 
 ## Workflow Diagram
 
-![AAP DB Deploy Workflow Diagram](./aap-db-deploy-workflow/src/main/resources/aap-db-deploy.svg)
+![AAP DB Deploy Workflow Diagram](./aap-db-deploy-workflow/src/main/resources/aap-db-deploy-main.svg)
 
 ---
 
@@ -176,7 +176,7 @@ aap-db-deploy-68ff48fdb6-7wcrc         1/1     Running   0          10m
     metadata:
     name: orchestrator-ocp-api-token
     annotations:
-        kubernetes.io/service-account.name: "orchestrator-ocp-api"
+        kubernetes.io/service-account.name: orchestrator-ocp-api
     ```
 
 ---

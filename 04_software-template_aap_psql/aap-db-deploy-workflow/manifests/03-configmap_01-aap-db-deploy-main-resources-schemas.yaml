@@ -1,0 +1,182 @@
+apiVersion: v1
+data:
+  aap-db-deploy-flow-aap-input-schema.json: "{\n  \"$schema\": \"http://json-schema.org/draft-07/schema#\",\n
+    \ \"title\": \"AAP DB Deploy AAP flow input parameters\",\n  \"type\": \"object\",\n
+    \ \"properties\": {\n    \"aap\": {\n      \"$ref\": \"aap-db-deploy-input-schema-ref-aap.json\",\n
+    \     \"type\": \"object\"\n    },\n    \"notifications\": {\n      \"$ref\":
+    \"aap-db-deploy-input-schema-ref-notifications.json\",\n      \"type\": \"object\"\n
+    \   }\n  },\n  \"required\": [\"aap\", \"notifications\"]\n} "
+  aap-db-deploy-flow-github-actions-input-schema.json: "{\n  \"$schema\": \"http://json-schema.org/draft-07/schema#\",\n
+    \ \"title\": \"AAP DB Deploy Github flow input parameters\",\n  \"type\": \"object\",\n
+    \ \"properties\": {\n    \"component\": {\n      \"$ref\": \"aap-db-deploy-input-schema-ref-component.json\",\n
+    \     \"type\": \"object\"\n    },\n    \"notifications\": {\n      \"$ref\":
+    \"aap-db-deploy-input-schema-ref-notifications.json\",\n      \"type\": \"object\"\n
+    \   },\n    \"java\": {\n      \"artifactId\": {\n      \"title\": \"Artifact
+    ID\",\n      \"type\": \"string\",\n      \"description\": \"Maven Artifact ID\",\n
+    \     \"default\": \"spring-petclinic\"\n    }\n    }\n  },\n  \"required\": [\"component\",
+    \"java\", \"notifications\"]\n} "
+  aap-db-deploy-flow-main-input-schema.json: "{\n  \"$schema\": \"http://json-schema.org/draft-07/schema#\",\n
+    \ \"title\": \"AAP DB Deploy Main Workflow input parameters\",\n  \"type\": \"object\",\n
+    \ \"properties\": {\n    \"component\": {\n      \"$ref\": \"aap-db-deploy-input-schema-ref-component.json\",\n
+    \     \"type\": \"object\"\n    },\n    \"java\": {\n      \"$ref\": \"aap-db-deploy-input-schema-ref-java.json\",\n
+    \     \"type\": \"object\"\n    },\n    \"ci\": {\n      \"$ref\": \"aap-db-deploy-input-schema-ref-ci.json\",\n
+    \     \"type\": \"object\"\n    },\n    \"aap\": {\n      \"$ref\": \"aap-db-deploy-input-schema-ref-aap.json\",\n
+    \     \"type\": \"object\"\n    },\n    \"notifications\": {\n      \"$ref\":
+    \"aap-db-deploy-input-schema-ref-notifications.json\",\n      \"type\": \"object\"\n
+    \   }\n  },\n  \"required\": [\"component\", \"java\", \"ci\", \"aap\", \"notifications\"]\n} "
+  aap-db-deploy-flow-namespace-management-input-schema.json: "{\n  \"$schema\": \"http://json-schema.org/draft-07/schema#\",\n
+    \ \"title\": \"AAP DB Deploy Namespace Management flow input parameters\",\n  \"type\":
+    \"object\",\n  \"properties\": {\n    \"notifications\": {\n      \"$ref\": \"aap-db-deploy-input-schema-ref-notifications.json\",\n
+    \     \"type\": \"object\"\n    }\n  },\n  \"required\": [\"notifications\"]\n} "
+  aap-db-deploy-flow-sotware-template-input-schema.json: "{\n  \"$schema\": \"http://json-schema.org/draft-07/schema#\",\n
+    \ \"title\": \"AAP DB Deploy Software Template flow input parameters\",\n  \"type\":
+    \"object\",\n  \"properties\": {\n    \"component\": {\n      \"$ref\": \"aap-db-deploy-input-schema-ref-component.json\",\n
+    \     \"type\": \"object\"\n    },\n    \"java\": {\n      \"$ref\": \"aap-db-deploy-input-schema-ref-java.json\",\n
+    \     \"type\": \"object\"\n    },\n    \"ci\": {\n      \"$ref\": \"aap-db-deploy-input-schema-ref-ci.json\",\n
+    \     \"type\": \"object\"\n    },\n    \"notifications\": {\n      \"$ref\":
+    \"aap-db-deploy-input-schema-ref-notifications.json\",\n      \"type\": \"object\"\n
+    \   }\n  },\n  \"required\": [\"component\", \"java\", \"ci\", \"aap\", \"notifications\"]\n} "
+  aap-db-deploy-input-schema-ref-aap.json: "{\n  \"$id\": \"classpath:/schemas/aap-db-deploy-input-schema-ref-aap.json\",\n
+    \ \"title\": \"AAP Job Definition\",\n  \"$schema\": \"http://json-schema.org/draft-07/schema#\",\n
+    \ \"type\": \"object\",\n  \"properties\": {\n    \"jobTemplate\": {\n      \"type\":
+    \"string\",\n      \"description\": \"Job template\",\n      \"enum\": [\"postgres_rhel\"]\n
+    \   },\n    \"inventoryGroup\": {\n      \"type\": \"string\",\n      \"description\":
+    \"A integer value for the foreign key of an inventory to use in this job run\"\n
+    \   },\n    \"limit\": {\n      \"type\": \"string\",\n      \"description\":
+    \"A string that represents a comma-separated list of hosts or groups to operate
+    on\"\n    }\n  },\n  \"required\": [\n    \"jobTemplate\",\n    \"inventoryGroup\",\n
+    \   \"limit\"\n  ],\n  \"examples\": [\n    {\n        \"jobTemplate\": \"postgres_rhel\",\n
+    \       \"limit\": \"1\",\n        \"inventoryGroup\": \"2\"\n    }\n  ]\n} "
+  aap-db-deploy-input-schema-ref-ci.json: "{\n  \"$id\": \"classpath:/schemas/aap-db-deploy-input-schema-ref-ci.json\",\n
+    \ \"title\": \"Provide information about the CI method\",\n  \"$schema\": \"http://json-schema.org/draft-07/schema#\",\n
+    \ \"properties\": {\n    \"ciMethod\": {\n      \"title\": \"Select a CI method\",\n
+    \     \"type\": \"string\",\n      \"description\": \"This action will create
+    a CI pipeline for your application based on chosen method\",\n      \"enum\":
+    [\n        \"./skeletons/github-actions/\",\n        \"./skeletons/tekton/\"\n
+    \     ],\n      \"default\": \"./skeletons/github-actions/\"\n    },\n    \"imageRepository\":
+    {\n      \"title\": \"Select a registry\",\n      \"type\": \"string\",\n      \"enum\":
+    [\n        \"quay.io\",\n        \"image-registry.openshift-image-registry.svc:5000\"\n
+    \     ],\n      \"default\": \"quay.io\"\n    },\n    \"imageNamespace\": {\n
+    \     \"title\": \"Quay.io Namespace\",\n      \"type\": \"string\",\n      \"description\":
+    \"The Quay.io namespace or organization\"\n    }\n  },\n  \"required\": [\n    \"ciMethod\",\n
+    \   \"imageRepository\",\n    \"imageNamespace\"\n  ]\n} "
+  aap-db-deploy-input-schema-ref-component.json: "{\n  \"$id\": \"classpath:/schemas/aap-db-deploy-input-schema-ref-component.json\",\n
+    \ \"title\": \"Provide information about the new component\",\n  \"$schema\":
+    \"http://json-schema.org/draft-07/schema#\",\n  \"type\": \"object\",\n  \"properties\":
+    {\n    \"orgName\": {\n      \"title\": \"Organization Name\",\n      \"type\":
+    \"string\",\n      \"description\": \"GitHub Organization Name\"\n    },\n    \"repoName\":
+    {\n      \"title\": \"Repository Name\",\n      \"type\": \"string\",\n      \"description\":
+    \"GitHub Repository Name\",\n      \"default\": \"spring-petclinic\"\n    },\n
+    \   \"description\": {\n      \"title\": \"Description\",\n      \"type\": \"string\",\n
+    \     \"description\": \"Help others understand what this component is for\",\n
+    \     \"default\": \"Spring PetClinic Application\"\n    },\n    \"owner\": {\n
+    \     \"title\": \"Owner\",\n      \"type\": \"string\",\n      \"description\":
+    \"The owner of the component\",\n      \"pattern\": \"^(user|group):[A-Za-z0-9]([-A-Za-z0-9]*[A-Za-z0-9])?/([A-Za-z0-9]([-A-Za-z0-9]*[A-Za-z0-9])?)$\",\n
+    \     \"default\": \"group:default/development\"\n    },\n    \"system\": {\n
+    \     \"title\": \"System\",\n      \"type\": \"string\",\n      \"description\":
+    \"System\",\n      \"enum\": [\n        \"system:default/janus-orchestrator\"\n
+    \     ]\n    },\n    \"port\": {\n      \"title\": \"Application Port\",\n      \"description\":
+    \"Override the port exposed for the application\",\n      \"type\": \"integer\",\n
+    \     \"default\": 8080\n    }\n  },\n  \"required\": [\n    \"orgName\",\n    \"repoName\",\n
+    \   \"owner\",\n    \"system\",\n    \"port\"\n  ]\n} "
+  aap-db-deploy-input-schema-ref-java.json: "{\n  \"$id\": \"classpath:/schemas/aap-db-deploy-input-schema-ref-java.json\",\n
+    \ \"title\": \"Provide information about the Java metadata\",\n  \"$schema\":
+    \"http://json-schema.org/draft-07/schema#\",\n  \"type\": \"object\",\n  \"properties\":
+    {\n    \"groupId\": {\n      \"title\": \"Group ID\",\n      \"type\": \"string\",\n
+    \     \"description\": \"Maven Group ID eg (io.janus)\",\n      \"default\": \"org.springframework.samples\"\n
+    \   },\n    \"artifactId\": {\n      \"title\": \"Artifact ID\",\n      \"type\":
+    \"string\",\n      \"description\": \"Maven Artifact ID\",\n      \"default\":
+    \"spring-petclinic\"\n    },\n    \"javaPackageName\": {\n      \"title\": \"Java
+    Package Namespace\",\n      \"type\": \"string\",\n      \"description\": \"Name
+    for the Java Package (ensure to use the / character as this is used for folder
+    structure) should match Group ID and Artifact ID\",\n      \"default\": \"org/springframework/samples/petclinic\"\n
+    \   }\n  },\n  \"required\": [\n    \"groupId\",\n    \"artifactId\",\n    \"javaPackageName\"\n
+    \ ]\n} "
+  aap-db-deploy-input-schema-ref-notifications.json: "{\n  \"$id\": \"classpath:/schemas/aap-db-deploy-input-schema-ref-recipients.json\",\n
+    \ \"title\": \"Notifications\",\n  \"$schema\": \"http://json-schema.org/draft-07/schema#\",\n
+    \ \"type\": \"object\",\n  \"properties\": {\n    \"recipients\": {\n      \"type\":
+    \"array\",\n      \"description\": \"A list of recipients for the notification
+    in the format of 'user:<namespace>/<username>' or 'group:<namespace>/<groupname>',
+    i.e. 'user:default/jsmith'\",\n      \"items\": {\n        \"title\": \"Recipient\",\n
+    \       \"type\": \"string\",\n        \"pattern\": \"^(user|group):[A-Za-z0-9]([-A-Za-z0-9]*[A-Za-z0-9])?/([A-Za-z0-9]([-A-Za-z0-9]*[A-Za-z0-9])?)$\"\n
+    \     },\n      \"minItems\": 1\n    }\n  },\n\"required\": [\n    \"recipients\"\n
+    \ ]\n} "
+  workflow-output-schema.json: |-
+    {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "WorkflowResult",
+        "description": "Schema of workflow output",
+        "type": "object",
+        "properties": {
+            "result": {
+                "type": "object",
+                "properties": {
+                    "message": {
+                        "description": "High-level summary of the current status, free-form text, human readable.",
+                        "type": "string"
+                    },
+                    "nextWorkflows": {
+                        "description": "List of workflows suggested to run next. Items at lower indexes are of higher priority.",
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "id": {
+                                    "description": "Workflow identifier",
+                                    "type": "string"
+                                },
+                                "name": {
+                                    "description": "Human readable title describing the workflow.",
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "id",
+                                "name"
+                            ]
+                        }
+                    },
+                    "outputs": {
+                        "description": "Additional structured output of workflow processing. This can contain identifiers of created resources, links to resources, logs or other output.",
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "key": {
+                                    "description": "Unique identifier of the option. Preferably human-readable.",
+                                    "type": "string"
+                                },
+                                "value": {
+                                    "description": "Free form value of the option.",
+                                    "anyOf": [
+                                        {
+                                            "type": "string"
+                                        },
+                                        {
+                                            "type": "number"
+                                        }
+                                    ]
+                                },
+                                "format": {
+                                    "description": "More detailed type of the 'value' property. Defaults to 'text'.",
+                                    "enum": [
+                                        "text",
+                                        "number",
+                                        "link"
+                                    ]
+                                }
+                            },
+                            "required": [
+                                "key",
+                                "value"
+                            ]
+                        }
+                    }
+                }
+            }
+        }
+    }
+kind: ConfigMap
+metadata:
+  creationTimestamp: null
+  name: 01-aap-db-deploy-main-resources-schemas

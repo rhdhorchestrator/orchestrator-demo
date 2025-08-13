@@ -1,0 +1,12 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AAP DB Deploy Namespace Management flow input parameters",
+  "type": "object",
+  "properties": {
+    "notifications": {
+      "$ref": "aap-db-deploy-input-schema-ref-notifications.json",
+      "type": "object"
+    }
+  },
+  "required": ["notifications"]
+} 

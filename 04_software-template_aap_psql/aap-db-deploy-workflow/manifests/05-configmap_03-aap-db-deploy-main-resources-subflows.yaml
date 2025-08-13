@@ -1,0 +1,234 @@
+apiVersion: v1
+data:
+  aap-job.sw.yaml: "specVersion: \"0.8\"\nid: aapJob\nversion: 0.0.1\nname: AAP Job
+    Executor\ndescription: |\n  Subworkflow to launch and monitor Ansible Automation
+    Platform jobs.\nannotations:\n  - \"workflow-type/infrastructure\"\ndataInputSchema:
+    ../schemas/aap-db-deploy-flow-aap-input-schema.json\nstart: LaunchAAPJob\nextensions:\n
+    \ - extensionid: workflow-uri-definitions\n    definitions:\n      notifications:
+    \"https://raw.githubusercontent.com/rhdhorchestrator/serverless-workflows/main/workflows/shared/specs/notifications-openapi.yaml\"\nfunctions:\n
+    \ - name: LaunchAAPJob\n    operation: ../specs/aap-openapi.yaml#launchJob\n  -
+    name: GetAAPJob\n    operation: ../specs/aap-openapi.yaml#getJob\n  - name: createNotification\n
+    \   operation: notifications#createNotification\n  - name: logInfo\n    type:
+    custom\n    operation: \"sysout:INFO\"\n  - name: stop\n    type: expression\n
+    \   operation: '{ \"aapJob\": { \"continue\":  false }}'\n  - name: continue\n
+    \   type: expression\n    operation: '{ \"aapJob\": { \"continue\":  true }}'\nstates:\n
+    \ - name: LaunchAAPJob\n    type: operation\n    actions:\n      - functionRef:\n
+    \         refName: LaunchAAPJob\n          arguments:\n            job_template_id:
+    ($SECRET.aap_template_id | tonumber)\n            limit: (.aap.limit | tonumber)\n
+    \           extra_vars:\n              rhel_inventory_group: (.aap.inventoryGroup
+    | tonumber)\n              targetNamespace: $SECRET.target_namespace\n        actionDataFilter:\n
+    \         toStateData: .launchedJob\n    stateDataFilter:\n      output: '.launchedJob
+    += { outputUrl: $SECRET.app_url +  \"/execution/jobs/playbook/\" + (.launchedJob.id|tostring)
+    + \"/output\" }'\n    transition: GetAAPJob\n  - name: GetAAPJob\n    type: operation\n
+    \   actions:\n      - functionRef:\n          refName: logInfo\n          arguments:\n
+    \           message: '\"Sleeping before checking the aap job \" + (.launchedJob|tostring)'\n
+    \       sleep:\n          after: PT15S\n      - functionRef:\n          refName:
+    GetAAPJob\n          arguments:\n            job_id: .launchedJob.id\n        actionDataFilter:\n
+    \         toStateData: .readJob\n    transition: IsJobDone\n  - name: IsJobDone\n
+    \   type: switch\n    dataConditions:\n      - condition: (.readJob.status ==
+    \"successful\")\n        transition:\n          nextState: SendAAPJobCompletedNotification\n
+    \     - condition: (.readJob.failed == true)\n        transition:\n          nextState:
+    SendAAPJobFailureNotification\n    defaultCondition:\n      transition: GetAAPJob\n
+    \ - name: SendAAPJobFailureNotification\n    type: operation\n    actions:\n      -
+    functionRef:\n          refName: stop\n      - functionRef:\n          refName:
+    createNotification\n          arguments:\n            recipients:\n              type:
+    \"entity\"\n              entityRef: .notifications.recipients\n            payload:\n
+    \             title: '\"AAP Job workflow \" + $WORKFLOW.instanceId + \" failed
+    on AAP Job.\" '\n              description: '\"AAP Job workflow ID: \" + $WORKFLOW.instanceId
+    + \" for job template id: \" + $SECRET.aap_template_id + \" failed.\"'\n              topic:
+    \"AAP Job\"\n              link: \".launchedJob.outputUrl\"\n              severity:
+    \"high\"\n    end: true\n  - name: SendAAPJobCompletedNotification\n    type:
+    operation\n    actions:\n      - functionRef:\n          refName: continue\n      -
+    functionRef:\n          refName: createNotification\n          arguments:\n            recipients:\n
+    \             type: \"entity\"\n              entityRef: .notifications.recipients\n
+    \           payload:\n              title: '\"AAP Job workflow \" + $WORKFLOW.instanceId
+    + \" completed AAP Job to create DB.\" '\n              description: '\"AAP Job
+    workflow ID: \" + $WORKFLOW.instanceId + \" for job template id: \" + $SECRET.aap_template_id
+    + \" completed.\"'\n              topic: \"AAP Job\"\n              link: \".launchedJob.outputUrl\"\n
+    \             severity: \"normal\"\n    end: true "
+  github-actions.sw.yaml: "specVersion: \"0.8\"\nid: githubActions\nversion: 0.0.1\nname:
+    GitHub Actions Monitor\ndescription: |\n  Subworkflow to monitor GitHub Actions
+    workflow completion.\nannotations:\n  - \"workflow-type/infrastructure\"\ndataInputSchema:
+    ../schemas/aap-db-deploy-flow-github-actions-input-schema.json\nstart: GetActionWorkflows\nextensions:\n
+    \ - extensionid: workflow-uri-definitions\n    definitions:\n      notifications:
+    \"https://raw.githubusercontent.com/rhdhorchestrator/serverless-workflows/main/workflows/shared/specs/notifications-openapi.yaml\"\nfunctions:\n
+    \ - name: GetActionWorkflows\n    operation: ../specs/github-openapi.yaml#actions/list-repo-workflows\n
+    \ - name: GetActionWorkflowRuns\n    operation: ../specs/github-openapi.yaml#actions/list-workflow-runs\n
+    \ - name: createNotification\n    operation: notifications#createNotification\n
+    \ - name: logInfo\n    type: custom\n    operation: \"sysout:INFO\"\n  - name:
+    stop\n    type: expression\n    operation: '{ \"githubActions\": { \"continue\":
+    \ false }}'\n  - name: continue\n    type: expression\n    operation: '{ \"githubActions\":
+    { \"continue\":  true }}'\n  - name: errorResult\n    type: expression\n    operation:
+    '{\n      \"result\": {\n      \"message\": \"Creation of application \" + .java.artifactId
+    + \" failed.\",\n      \"outputs\":[\n      {\n      \"key\":\"AAP Job\",\n      \"value\":
+    $SECRET.rhdh_url + \"/catalog/default/component/\" + .component.repoName,\n      \"format\":\"link\"\n
+    \     },\n      {\n      \"key\":\"Component in Catalog\",\n      \"value\": $SECRET.rhdh_url
+    + \"/catalog/default/component/\" + .component.repoName,\n      \"format\":\"link\"\n
+    \     },\n      {\n      \"key\":\"GitHub Action\",\n      \"value\": \".actionWorkflowRuns.workflow_runs[0].html_url\",\n
+    \     \"format\":\"link\"\n      }]\n      }\n      }'\nstates:\n  - name: GetActionWorkflows\n
+    \   type: operation\n    actions:\n      - functionRef:\n          refName: GetActionWorkflows\n
+    \         arguments:\n            owner: .component.orgName\n            repo:
+    .component.repoName\n        actionDataFilter:\n          toStateData: .actionWorkflows\n
+    \   transition: GetActionWorkflowRuns\n  - name: GetActionWorkflowRuns\n    type:
+    operation\n    actions:\n      - functionRef:\n          refName: logInfo\n          arguments:\n
+    \           message: '\"Sleeping before checking the CI action \" + (.actionWorkflows.workflows[]
+    | select(.name == \"CI\") | .id | tostring) + \" in GitHub\"'\n        sleep:\n
+    \         after: PT15S\n      - functionRef:\n          refName: GetActionWorkflowRuns\n
+    \         arguments:\n            owner: .component.orgName\n            repo:
+    .component.repoName\n            workflow_id: .actionWorkflows.workflows[] | select(.name
+    == \"CI\") | .id | tonumber\n        actionDataFilter:\n          toStateData:
+    .actionWorkflowRuns\n    transition: IsGitHubActionDone\n  - name: IsGitHubActionDone\n
+    \   type: switch\n    dataConditions:\n      - condition: (.actionWorkflowRuns.workflow_runs[0].status
+    == \"completed\" and .actionWorkflowRuns.workflow_runs[0].conclusion == \"success\")\n
+    \       transition:\n          nextState: SendGithubActionCompletedNotification\n
+    \     - condition: (.actionWorkflowRuns.workflow_runs[0].status == \"in_progress\"
+    or .actionWorkflowRuns.workflow_runs[0].status == \"queued\")\n        transition:
+    GetActionWorkflowRuns\n      - condition: (.actionWorkflowRuns.workflow_runs[0].status
+    == \"completed\" and .actionWorkflowRuns.workflow_runs[0].conclusion == \"failure\")\n
+    \       transition: SendGithubActionFailureNotification\n    defaultCondition:\n
+    \     transition: GetActionWorkflowRuns\n  - name: SendGithubActionFailureNotification\n
+    \   type: operation\n    actions:\n      - name: setOutput\n        functionRef:\n
+    \         refName: errorResult\n      - name: stop\n        functionRef:\n          refName:
+    stop\n      - functionRef:\n          refName: createNotification\n          arguments:\n
+    \           recipients:\n              type: \"entity\"\n              entityRef:
+    .notifications.recipients\n            payload:\n              title: '\"GitHub
+    Actions workflow \" + $WORKFLOW.instanceId + \" failed on GitHub CI workflow.\"'\n
+    \             description: '\"GitHub Actions workflow ID: \" + $WORKFLOW.instanceId
+    + \" failed on GitHub CI workflow.\"'\n              topic: \"GitHub Actions\"\n
+    \             link: \".actionWorkflowRuns.workflow_runs[0].html_url\"\n              severity:
+    \"high\"\n    end: true\n  - name: SendGithubActionCompletedNotification\n    type:
+    operation\n    actions:\n      - functionRef:\n          refName: continue\n      -
+    functionRef:\n          refName: createNotification\n          arguments:\n            recipients:\n
+    \             type: \"entity\"\n              entityRef: .notifications.recipients\n
+    \           payload:\n              title: '\"GitHub Actions workflow \" + $WORKFLOW.instanceId
+    + \" completed GitHub CI workflow.\"'\n              description: '\"GitHub Actions
+    workflow ID: \" + $WORKFLOW.instanceId + \" successfully completed the GitHub
+    CI workflow.\"'\n              topic: \"GitHub Actions\"\n              link:
+    \".actionWorkflowRuns.workflow_runs[0].html_url\"\n              severity: \"normal\"\n
+    \   end: true "
+  namespace-management.sw.yaml: "specVersion: \"0.8\"\nid: namespaceManagement\nversion:
+    0.0.1\nname: Namespace Management\ndescription: |\n  Subworkflow to create and
+    manage OpenShift namespaces.\nannotations:\n  - \"workflow-type/infrastructure\"\ndataInputSchema:
+    ../schemas/aap-db-deploy-flow-namespace-management-input-schema.json\nstart: CheckNamespaceExists\nerrors:\n
+    \ - name: namespaceNotFound\n    code: \"404\"\nextensions:\n  - extensionid:
+    workflow-uri-definitions\n    definitions:\n      notifications: \"https://raw.githubusercontent.com/rhdhorchestrator/serverless-workflows/main/workflows/shared/specs/notifications-openapi.yaml\"\nfunctions:\n
+    \ - name: createProjectRequestOpenshiftIoV1Project\n    operation: ../specs/ocp-openapi.yaml#createProjectRequestOpenshiftIoV1Project\n
+    \ - name: readProjectOpenshiftIoV1Project\n    operation: ../specs/ocp-openapi.yaml#readProjectOpenshiftIoV1Project\n
+    \ - name: patchCoreV1Namespace\n    operation: ../specs/ocp-openapi.yaml#patchCoreV1Namespace\n
+    \ - name: createNotification\n    operation: notifications#createNotification\n
+    \ - name: logInfo\n    type: custom\n    operation: \"sysout:INFO\"\n  - name:
+    stop\n    type: expression\n    operation: '{ \"continue\":  false }'\n  - name:
+    continue\n    type: expression\n    operation: '{ \"continue\":  true }'\nstates:\n
+    \ - name: CheckNamespaceExists\n    type: operation\n    actions:\n      - functionRef:\n
+    \         refName: logInfo\n          arguments:\n            message: '\"Checking
+    if namespace \" + $SECRET.target_namespace + \" exists\"'\n      - functionRef:\n
+    \         refName: readProjectOpenshiftIoV1Project\n          arguments:\n            name:
+    $SECRET.target_namespace\n        actionDataFilter:\n          toStateData: .existingNamespace\n
+    \   onErrors:\n      - errorRef: namespaceNotFound\n        transition: CreateNamespace\n
+    \   transition: EvaluateNamespaceExists\n  - name: EvaluateNamespaceExists\n    type:
+    switch\n    dataConditions:\n      - condition: '.existingNamespace != null and
+    .existingNamespace.metadata.name == $SECRET.target_namespace'\n        transition:\n
+    \         nextState: NamespaceExistsNotification\n    defaultCondition:\n      transition:
+    CreateNamespace\n  - name: NamespaceExistsNotification\n    type: operation\n
+    \   actions:\n      - functionRef:\n          refName: logInfo\n          arguments:\n
+    \           message: '\"Namespace \" + $SECRET.target_namespace + \" already exists,
+    patching with ArgoCD label\"'\n      - functionRef:\n          refName: createNotification\n
+    \         arguments:\n            recipients:\n              type: \"entity\"\n
+    \             entityRef: .notifications.recipients\n            payload:\n              title:
+    '\"Namespace Management workflow \" + $WORKFLOW.instanceId + \" updated existing
+    namespace.\"'\n              description: '\"Namespace \" + $SECRET.target_namespace
+    + \" already exists and has been patched with ArgoCD management label.\"'\n              topic:
+    \"Namespace Management\"\n              severity: \"normal\"\n    transition:
+    PatchNamespace\n  - name: CreateNamespace\n    type: operation\n    actions:\n
+    \     - functionRef:\n          refName: logInfo\n          arguments:\n            message:
+    '\"Creating namespace \" + $SECRET.target_namespace'\n      - functionRef:\n          refName:
+    createProjectRequestOpenshiftIoV1Project\n          arguments:\n            kind:
+    ProjectRequest\n            metadata:\n              name: $SECRET.target_namespace\n
+    \           spec:\n              finalizers:\n                - kubernetes\n        actionDataFilter:\n
+    \         toStateData: .createdNamespace\n    transition: NamespaceCreatedNotification\n
+    \ - name: PatchNamespace\n    type: operation\n    actions:\n      - functionRef:\n
+    \         refName: continue\n      - functionRef:\n          refName: logInfo\n
+    \         arguments:\n            message: '\"Adding ArgoCD label to namespace
+    \" + $SECRET.target_namespace'\n      - functionRef:\n          refName: patchCoreV1Namespace\n
+    \         arguments:\n            name: $SECRET.target_namespace\n            metadata:\n
+    \             labels:\n                argocd.argoproj.io/managed-by: orchestrator-gitops\n
+    \       actionDataFilter:\n          toStateData: .patchedNamespace\n    end:
+    true\n  - name: NamespaceCreatedNotification\n    type: operation\n    actions:\n
+    \     - functionRef:\n          refName: continue\n      - functionRef:\n          refName:
+    logInfo\n          arguments:\n            message: '\"Namespace \" + $SECRET.target_namespace
+    + \" created successfully\"'\n      - functionRef:\n          refName: createNotification\n
+    \         arguments:\n            recipients:\n              type: \"entity\"\n
+    \             entityRef: .notifications.recipients\n            payload:\n              title:
+    '\"Namespace Management workflow \" + $WORKFLOW.instanceId + \" created namespace.\"'\n
+    \             description: '\"Namespace \" + $SECRET.target_namespace + \" created
+    successfully with ArgoCD management label.\"'\n              topic: \"Namespace
+    Management\"\n              severity: \"normal\"\n    transition: PatchNamespace "
+  software-template.sw.yaml: "specVersion: \"0.8\"\nid: softwareTemplate\nversion:
+    0.0.1\nname: Software Template Launcher\ndescription: |\n  Subworkflow to launch
+    a software template and monitor its completion.\nannotations:\n  - \"workflow-type/infrastructure\"\ndataInputSchema:
+    ../schemas/aap-db-deploy-flow-sotware-template-input-schema.json\nstart: LaunchSoftwareTemplate\nextensions:\n
+    \ - extensionid: workflow-uri-definitions\n    definitions:\n      notifications:
+    \"https://raw.githubusercontent.com/rhdhorchestrator/serverless-workflows/main/workflows/shared/specs/notifications-openapi.yaml\"\nfunctions:\n
+    \ - name: LaunchSoftwareTemplate\n    operation: ../specs/scaffolder-openapi.yaml#createTask\n
+    \ - name: GetSoftwareTemplateTask\n    operation: ../specs/scaffolder-openapi.yaml#getTaskDetails\n
+    \ - name: createNotification\n    operation: notifications#createNotification\n
+    \ - name: logInfo\n    type: custom\n    operation: \"sysout:INFO\"\n  - name:
+    templateSuccessResult\n    type: expression\n    operation: '{\n      \"result\":
+    {\n      \"outputs\":[\n      {\n      \"key\":\"Component in Catalog\",\n      \"value\":
+    $SECRET.rhdh_url + \"/catalog/default/component/\" + .component.repoName,\n      \"format\":\"link\"\n
+    \     }]\n      }\n      }'\n  - name: templateErrorResult\n    type: expression\n
+    \   operation: '{\n      \"result\": {\n      \"message\": \"Launching software
+    template \" + $SECRET.software_template_ref + \" failed.\",\n      \"outputs\":[]\n
+    \     }\n      }'\n  - name: stop\n    type: expression\n    operation: '{ \"softwareTemplate\":
+    { \"continue\": false }}'\n  - name: continue\n    type: expression\n    operation:
+    '{ \"softwareTemplate\": { \"continue\": true }}'\nstates:\n  - name: LaunchSoftwareTemplate\n
+    \   type: operation\n    actions:\n      - functionRef:\n          refName: LaunchSoftwareTemplate\n
+    \         arguments:\n            templateRef: $SECRET.software_template_ref\n
+    \           values:\n              port: .component.port\n              system:
+    .component.system\n              orgName: .component.orgName\n              repoName:
+    .component.repoName\n              description: .repositoryInfo.description\n
+    \             owner: .component.owner\n              groupId: .java.groupId\n
+    \             artifactId: .java.artifactId\n              javaPackageName: .java.javaPackageName\n
+    \             ci: .ci.ciMethod\n              imageRepository: .ci.imageRepository\n
+    \             imageNamespace: .ci.imageNamespace\n              quayUserName:
+    '[\"*\" * ($SECRET.quay_username | length)] | add'\n              quayPassword:
+    '[\"*\" * ($SECRET.quay_password | length)] | add'\n              ghToken: '[\"*\"
+    * ($SECRET.ghToken | length)] | add'\n            secrets:\n              quayUserName:
+    $SECRET.quay_username\n              quayPassword: $SECRET.quay_password\n              ghToken:
+    $SECRET.ghToken\n        actionDataFilter:\n          toStateData: .launchedTemplate\n
+    \   transition: GetSoftwareTemplate\n  - name: GetSoftwareTemplate\n    type:
+    operation\n    actions:\n      - functionRef:\n          refName: logInfo\n          arguments:\n
+    \           message: '\"Sleeping before checking the software template \"'\n        sleep:\n
+    \         after: PT15S\n      - functionRef:\n          refName: GetSoftwareTemplateTask\n
+    \         arguments:\n            taskId: .launchedTemplate.id\n        actionDataFilter:\n
+    \         toStateData: .readTask\n    transition: IsTaskDone\n  - name: IsTaskDone\n
+    \   type: switch\n    dataConditions:\n      - condition: (.readTask.status ==
+    \"processing\")\n        transition:\n          nextState: GetSoftwareTemplate\n
+    \     - condition: (.readTask.status == \"completed\")\n        transition:\n
+    \         nextState: SendTaskCompletedNotification\n      - condition: (.readTask.status
+    == \"failed\")\n        transition:\n          nextState: SendTaskFailureNotification\n
+    \   defaultCondition:\n      transition: GetSoftwareTemplate\n  - name: SendTaskCompletedNotification\n
+    \   type: operation\n    actions:\n      - functionRef:\n          refName: templateSuccessResult\n
+    \     - functionRef:\n          refName: continue\n      - functionRef:\n          refName:
+    createNotification\n          arguments:\n            recipients:\n              type:
+    \"entity\"\n              entityRef: .notifications.recipients\n            payload:\n
+    \             title: '\"Software Template workflow \" + $WORKFLOW.instanceId +
+    \" completed software template creation.\" '\n              description: '\"Software
+    Template workflow \" + $WORKFLOW.instanceId + \" completed software template creation
+    based on \" + $SECRET.software_template_ref'\n              topic: \"Software
+    Template\"\n              link: '$SECRET.rhdh_url + \"/catalog/default/component/\"
+    + .component.repoName'\n              severity: \"normal\"\n    end: true\n  -
+    name: SendTaskFailureNotification\n    type: operation\n    actions:\n      -
+    name: templateErrorResult\n        functionRef:\n          refName: templateErrorResult\n
+    \     - name: stop\n        functionRef:\n          refName: stop\n      - functionRef:\n
+    \         refName: createNotification\n          arguments:\n            recipients:\n
+    \             type: \"entity\"\n              entityRef: .notifications.recipients\n
+    \           payload:\n              title: '\"Software Template workflow \" +
+    $WORKFLOW.instanceId + \" failed on software template creation for repository
+    \" + .component.repoName'\n              description: '\"Software Template workflow
+    ID: \" + $WORKFLOW.instanceId + \" for software template \" '\n              topic:
+    \"Software Template\"\n              severity: \"high\"\n    end: true "
+kind: ConfigMap
+metadata:
+  creationTimestamp: null
+  name: 03-aap-db-deploy-main-resources-subflows

@@ -1,0 +1,139 @@
+specVersion: "0.8"
+id: namespaceManagement
+version: 0.0.1
+name: Namespace Management
+description: |
+  Subworkflow to create and manage OpenShift namespaces.
+annotations:
+  - "workflow-type/infrastructure"
+dataInputSchema: ../schemas/aap-db-deploy-flow-namespace-management-input-schema.json
+start: CheckNamespaceExists
+errors:
+  - name: namespaceNotFound
+    code: "404"
+extensions:
+  - extensionid: workflow-uri-definitions
+    definitions:
+      notifications: "https://raw.githubusercontent.com/rhdhorchestrator/serverless-workflows/main/workflows/shared/specs/notifications-openapi.yaml"
+functions:
+  - name: createProjectRequestOpenshiftIoV1Project
+    operation: ../specs/ocp-openapi.yaml#createProjectRequestOpenshiftIoV1Project
+  - name: readProjectOpenshiftIoV1Project
+    operation: ../specs/ocp-openapi.yaml#readProjectOpenshiftIoV1Project
+  - name: patchCoreV1Namespace
+    operation: ../specs/ocp-openapi.yaml#patchCoreV1Namespace
+  - name: createNotification
+    operation: notifications#createNotification
+  - name: logInfo
+    type: custom
+    operation: "sysout:INFO"
+  - name: stop
+    type: expression
+    operation: '{ "continue":  false }'
+  - name: continue
+    type: expression
+    operation: '{ "continue":  true }'
+states:
+  - name: CheckNamespaceExists
+    type: operation
+    actions:
+      - functionRef:
+          refName: logInfo
+          arguments:
+            message: '"Checking if namespace " + $SECRET.target_namespace + " exists"'
+      - functionRef:
+          refName: readProjectOpenshiftIoV1Project
+          arguments:
+            name: $SECRET.target_namespace
+        actionDataFilter:
+          toStateData: .existingNamespace
+    onErrors:
+      - errorRef: namespaceNotFound
+        transition: CreateNamespace
+    transition: EvaluateNamespaceExists
+  - name: EvaluateNamespaceExists
+    type: switch
+    dataConditions:
+      - condition: '.existingNamespace != null and .existingNamespace.metadata.name == $SECRET.target_namespace'
+        transition:
+          nextState: NamespaceExistsNotification
+    defaultCondition:
+      transition: CreateNamespace
+  - name: NamespaceExistsNotification
+    type: operation
+    actions:
+      - functionRef:
+          refName: logInfo
+          arguments:
+            message: '"Namespace " + $SECRET.target_namespace + " already exists, patching with ArgoCD label"'
+      - functionRef:
+          refName: createNotification
+          arguments:
+            recipients:
+              type: "entity"
+              entityRef: .notifications.recipients
+            payload:
+              title: '"Namespace Management workflow " + $WORKFLOW.instanceId + " updated existing namespace."'
+              description: '"Namespace " + $SECRET.target_namespace + " already exists and has been patched with ArgoCD management label."'
+              topic: "Namespace Management"
+              severity: "normal"
+    transition: PatchNamespace
+  - name: CreateNamespace
+    type: operation
+    actions:
+      - functionRef:
+          refName: logInfo
+          arguments:
+            message: '"Creating namespace " + $SECRET.target_namespace'
+      - functionRef:
+          refName: createProjectRequestOpenshiftIoV1Project
+          arguments:
+            kind: ProjectRequest
+            metadata:
+              name: $SECRET.target_namespace
+            spec:
+              finalizers:
+                - kubernetes
+        actionDataFilter:
+          toStateData: .createdNamespace
+    transition: NamespaceCreatedNotification
+  - name: PatchNamespace
+    type: operation
+    actions:
+      - functionRef:
+          refName: continue
+      - functionRef:
+          refName: logInfo
+          arguments:
+            message: '"Adding ArgoCD label to namespace " + $SECRET.target_namespace'
+      - functionRef:
+          refName: patchCoreV1Namespace
+          arguments:
+            name: $SECRET.target_namespace
+            metadata:
+              labels:
+                argocd.argoproj.io/managed-by: orchestrator-gitops
+        actionDataFilter:
+          toStateData: .patchedNamespace
+    end: true
+  - name: NamespaceCreatedNotification
+    type: operation
+    actions:
+      - functionRef:
+          refName: continue
+      - functionRef:
+          refName: logInfo
+          arguments:
+            message: '"Namespace " + $SECRET.target_namespace + " created successfully"'
+      - functionRef:
+          refName: createNotification
+          arguments:
+            recipients:
+              type: "entity"
+              entityRef: .notifications.recipients
+            payload:
+              title: '"Namespace Management workflow " + $WORKFLOW.instanceId + " created namespace."'
+              description: '"Namespace " + $SECRET.target_namespace + " created successfully with ArgoCD management label."'
+              topic: "Namespace Management"
+              severity: "normal"
+    transition: PatchNamespace 

@@ -1,0 +1,330 @@
+apiVersion: sonataflow.org/v1alpha08
+kind: SonataFlow
+metadata:
+  annotations:
+    sonataflow.org/description: |
+      Main orchestration workflow that coordinates software template creation,
+      namespace management, AAP job execution, GitHub Actions monitoring, and ArgoCD deployment.
+    sonataflow.org/expressionLang: jq
+    sonataflow.org/profile: gitops
+    sonataflow.org/version: 0.0.1
+  creationTimestamp: null
+  labels:
+    app: aap-db-deploy-main
+    app.kubernetes.io/component: serverless-workflow
+    app.kubernetes.io/managed-by: sonataflow-operator
+    app.kubernetes.io/name: aap-db-deploy-main
+    sonataflow.org/workflow-app: aap-db-deploy-main
+    sonataflow.org/workflow-namespace: ""
+  name: aap-db-deploy-main
+spec:
+  flow:
+    annotations:
+      - workflow-type/infrastructure
+    dataInputSchema:
+      failOnValidationErrors: true
+      schema: schemas/aap-db-deploy-flow-main-input-schema.json
+    functions:
+      - name: createArgoprojIoV1alpha1NamespacedApplication
+        operation: specs/argocd-openapi.yaml#createArgoprojIoV1alpha1NamespacedApplication
+        type: rest
+      - name: createNotification
+        operation: notifications#createNotification
+        type: rest
+      - name: logInfo
+        operation: sysout:INFO
+        type: custom
+      - name: successResult
+        operation: '{ "result": { "message": "Application " + .java.artifactId + " deployed.", "outputs":[ { "key":"AAP Job", "value": $SECRET.rhdh_url + "/catalog/default/component/" + .component.repoName, "format":"link" }, { "key":"Component in Catalog", "value": $SECRET.rhdh_url + "/catalog/default/component/" + .component.repoName, "format":"link" }] } }'
+        type: expression
+    start:
+      stateName: LaunchSoftwareTemplateSubflow
+    states:
+      - actionMode: sequential
+        actions:
+          - actionDataFilter:
+              useResults: true
+            name: LaunchSoftwareTemplateSubflow
+            subFlowRef:
+              invoke: sync
+              onParentComplete: terminate
+              workflowId: softwareTemplate
+        name: LaunchSoftwareTemplateSubflow
+        transition:
+          nextState: checkContinueAfterSoftwareTemplate
+        type: operation
+      - dataConditions:
+          - condition: ( .softwareTemplate.continue == true)
+            transition:
+              nextState: LaunchNamespaceManagementSubflow
+        defaultCondition:
+          transition:
+            nextState: SubflowError
+        name: checkContinueAfterSoftwareTemplate
+        type: switch
+      - actionMode: sequential
+        actions:
+          - actionDataFilter:
+              results: .continue
+              toStateData: .namespaceManagement.continue
+              useResults: true
+            name: LaunchNamespaceManagementSubflow
+            subFlowRef:
+              invoke: sync
+              onParentComplete: terminate
+              workflowId: namespaceManagement
+        name: LaunchNamespaceManagementSubflow
+        transition:
+          nextState: checkContinueAfterNamespace
+        type: operation
+      - dataConditions:
+          - condition: ( .namespaceManagement.continue == true)
+            transition:
+              nextState: LaunchAAPJobSubflow
+        defaultCondition:
+          transition:
+            nextState: SubflowError
+        name: checkContinueAfterNamespace
+        type: switch
+      - actionMode: sequential
+        actions:
+          - actionDataFilter:
+              useResults: true
+            name: LaunchAAPJobSubflow
+            subFlowRef:
+              invoke: sync
+              onParentComplete: terminate
+              workflowId: aapJob
+        name: LaunchAAPJobSubflow
+        transition:
+          nextState: checkContinueAfterAAPJob
+        type: operation
+      - dataConditions:
+          - condition: ( .aapJob.continue == true)
+            transition:
+              nextState: LaunchGitHubActionsSubflow
+        defaultCondition:
+          transition:
+            nextState: SubflowError
+        name: checkContinueAfterAAPJob
+        type: switch
+      - actionMode: sequential
+        actions:
+          - actionDataFilter:
+              useResults: true
+            name: LaunchGitHubActionsSubflow
+            subFlowRef:
+              invoke: sync
+              onParentComplete: terminate
+              workflowId: githubActions
+        name: LaunchGitHubActionsSubflow
+        transition:
+          nextState: checkContinueAfterGithubAction
+        type: operation
+      - dataConditions:
+          - condition: ( .githubActions.continue == true)
+            transition:
+              nextState: CreateArgoCDApplication
+        defaultCondition:
+          transition:
+            nextState: SubflowError
+        name: checkContinueAfterGithubAction
+        type: switch
+      - actionMode: sequential
+        actions:
+          - actionDataFilter:
+              useResults: true
+            functionRef:
+              arguments:
+                message: '"Creating ArgoCD application for " + .java.artifactId'
+              invoke: sync
+              refName: logInfo
+          - actionDataFilter:
+              toStateData: .argoCDResult
+              useResults: true
+            functionRef:
+              arguments:
+                apiVersion: argoproj.io/v1alpha1
+                kind: Application
+                metadata:
+                  labels:
+                    rht-gitops.com/janus-argocd: .component.repoName
+                  name: .java.artifactId + "-dev"
+                namespace: $SECRET.target_application_namespace
+                spec:
+                  destination:
+                    namespace: $SECRET.target_namespace
+                    server: https://kubernetes.default.svc
+                  project: $SECRET.target_argocd_project
+                  source:
+                    path: helm/
+                    repoURL: '"https://github.com/" + .component.orgName + "/" + .component.repoName + "-gitops.git"'
+                    targetRevision: main
+                  syncPolicy:
+                    automated:
+                      prune: true
+                      selfHeal: true
+                    syncOptions:
+                      - CreateNamespace=true
+                      - ServerSideApply=true
+              invoke: sync
+              refName: createArgoprojIoV1alpha1NamespacedApplication
+        name: CreateArgoCDApplication
+        transition:
+          nextState: SendSuccessNotification
+        type: operation
+      - actionMode: sequential
+        actions:
+          - actionDataFilter:
+              useResults: true
+            functionRef:
+              arguments:
+                payload:
+                  description: The application was deployed using ArgoCD. Watch CD tab in the component page for deployment progress.
+                  link: $SECRET.rhdh_url + "/catalog/default/component/" + .component.repoName + "/cd"
+                  severity: normal
+                  title: '"AAP DB Deploy workflow " + $WORKFLOW.instanceId + " completed successfully." '
+                  topic: AAP DB Deploy
+                recipients:
+                  entityRef: .notifications.recipients
+                  type: entity
+              invoke: sync
+              refName: createNotification
+          - actionDataFilter:
+              useResults: true
+            functionRef:
+              invoke: sync
+              refName: successResult
+            name: setOutput
+        end:
+          terminate: true
+        name: SendSuccessNotification
+        type: operation
+      - actionMode: sequential
+        actions:
+          - actionDataFilter:
+              useResults: true
+            functionRef:
+              arguments:
+                message: Stopping master workflow after one of the subflow did not successfully fill his job
+              invoke: sync
+              refName: logInfo
+        end:
+          terminate: true
+        name: SubflowError
+        type: operation
+  podTemplate:
+    container:
+      env:
+        - name: TARGET_APPLICATION_PROJECT
+          valueFrom:
+            secretKeyRef:
+              key: TARGET_APPLICATION_PROJECT
+              name: aap-db-deploy-main-secrets
+        - name: AAP_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: AAP_USERNAME
+              name: aap-db-deploy-main-secrets
+        - name: ARGOCD_OCP_API_URL
+          valueFrom:
+            secretKeyRef:
+              key: ARGOCD_OCP_API_URL
+              name: aap-db-deploy-main-secrets
+        - name: TARGET_ARGOCD_NAMESPACE
+          valueFrom:
+            secretKeyRef:
+              key: TARGET_ARGOCD_NAMESPACE
+              name: aap-db-deploy-main-secrets
+        - name: ARGOCD_OCP_API_TOKEN
+          valueFrom:
+            secretKeyRef:
+              key: ARGOCD_OCP_API_TOKEN
+              name: aap-db-deploy-main-secrets
+        - name: SOFTWARE_TEMPLATE_REF
+          valueFrom:
+            secretKeyRef:
+              key: SOFTWARE_TEMPLATE_REF
+              name: aap-db-deploy-main-secrets
+        - name: AAP_TEMPLATE_ID
+          valueFrom:
+            secretKeyRef:
+              key: AAP_TEMPLATE_ID
+              name: aap-db-deploy-main-secrets
+        - name: QUAY_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: QUAY_USERNAME
+              name: aap-db-deploy-main-secrets
+        - name: RHDH_URL
+          valueFrom:
+            secretKeyRef:
+              key: RHDH_URL
+              name: aap-db-deploy-main-secrets
+        - name: TARGET_ARGOCD_PROJECT
+          valueFrom:
+            secretKeyRef:
+              key: TARGET_ARGOCD_PROJECT
+              name: aap-db-deploy-main-secrets
+        - name: AAP_URL
+          valueFrom:
+            secretKeyRef:
+              key: AAP_URL
+              name: aap-db-deploy-main-secrets
+        - name: QUAY_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: QUAY_PASSWORD
+              name: aap-db-deploy-main-secrets
+        - name: GITHUB_TOKEN
+          valueFrom:
+            secretKeyRef:
+              key: GITHUB_TOKEN
+              name: aap-db-deploy-main-secrets
+        - name: AAP_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: AAP_PASSWORD
+              name: aap-db-deploy-main-secrets
+        - name: NOTIFICATIONS_BEARER_TOKEN
+          valueFrom:
+            secretKeyRef:
+              key: NOTIFICATIONS_BEARER_TOKEN
+              name: aap-db-deploy-main-secrets
+        - name: RHDH_INTERNAL_SVC
+          valueFrom:
+            secretKeyRef:
+              key: RHDH_INTERNAL_SVC
+              name: aap-db-deploy-main-secrets
+        - name: SCAFFOLDER_BEARER_TOKEN
+          valueFrom:
+            secretKeyRef:
+              key: SCAFFOLDER_BEARER_TOKEN
+              name: aap-db-deploy-main-secrets
+      image: quay.io/gfarache/aap-new:latest
+      resources: {}
+  resources:
+    configMaps:
+      - configMap:
+          name: 01-aap-db-deploy-main-resources-schemas
+        workflowPath: schemas
+      - configMap:
+          name: 02-aap-db-deploy-main-resources-specs
+        workflowPath: specs
+      - configMap:
+          name: 03-aap-db-deploy-main-resources-subflows
+        workflowPath: subflows
+  persistence:
+    postgresql:
+      secretRef:
+        name: sonataflow-psql-postgresql
+        userKey: postgres-username
+        passwordKey: postgres-password
+      serviceRef:
+        name: sonataflow-psql-postgresql
+        port: 5432
+        databaseName: sonataflow
+        databaseSchema: aap-db-deploy-main
+status:
+  address: {}
+  lastTimeRecoverAttempt: null

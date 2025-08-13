@@ -2,6 +2,7 @@
   "$id": "classpath:/schemas/aap-db-deploy-input-schema-ref-java.json",
   "title": "Provide information about the Java metadata",
   "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
   "properties": {
     "groupId": {
       "title": "Group ID",
@@ -27,4 +28,4 @@
     "artifactId",
     "javaPackageName"
   ]
-}
+} 

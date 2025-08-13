@@ -6523,4 +6523,4 @@ data:
 kind: ConfigMap
 metadata:
   creationTimestamp: null
-  name: 02-aap-db-deploy-resources-specs
+  name: 02-aap-db-deploy-main-resources-specs

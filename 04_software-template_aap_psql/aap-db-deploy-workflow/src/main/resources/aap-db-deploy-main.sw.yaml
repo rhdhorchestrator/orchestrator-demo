@@ -1,0 +1,171 @@
+specVersion: "0.8"
+id: aap-db-deploy-main
+version: 0.0.1
+name: AAP DB Deploy - Main Orchestrator
+description: |
+  Main orchestration workflow that coordinates software template creation,
+  namespace management, AAP job execution, GitHub Actions monitoring, and ArgoCD deployment.
+annotations:
+  - "workflow-type/infrastructure"
+dataInputSchema: schemas/aap-db-deploy-flow-main-input-schema.json
+start: LaunchSoftwareTemplateSubflow
+extensions:
+  - extensionid: workflow-uri-definitions
+    definitions:
+      notifications: "https://raw.githubusercontent.com/rhdhorchestrator/serverless-workflows/main/workflows/shared/specs/notifications-openapi.yaml"
+functions:
+  - name: createArgoprojIoV1alpha1NamespacedApplication
+    operation: specs/argocd-openapi.yaml#createArgoprojIoV1alpha1NamespacedApplication
+  - name: createNotification
+    operation: notifications#createNotification
+  - name: logInfo
+    type: custom
+    operation: "sysout:INFO"
+  - name: successResult
+    type: expression
+    operation: '{
+      "result": {
+      "message": "Application " + .java.artifactId + " deployed.",
+      "outputs":[
+      {
+      "key":"AAP Job",
+      "value": $SECRET.rhdh_url + "/catalog/default/component/" + .component.repoName,
+      "format":"link"
+      },
+      {
+      "key":"Component in Catalog",
+      "value": $SECRET.rhdh_url + "/catalog/default/component/" + .component.repoName,
+      "format":"link"
+      }]
+      }
+      }'
+states:
+  - name: LaunchSoftwareTemplateSubflow
+    type: operation
+    actions:
+      - name: LaunchSoftwareTemplateSubflow
+        subFlowRef: softwareTemplate
+        # All data from softwareTemplate flow will be merged into the main workflow
+        # if no actionDataFilter is set, default value is true.
+        actionDataFilter:
+          useResults: true
+    transition: checkContinueAfterSoftwareTemplate
+  - name: checkContinueAfterSoftwareTemplate
+    type: switch
+    dataConditions:
+      - condition: ( .softwareTemplate.continue == true)
+        transition:
+          nextState: LaunchNamespaceManagementSubflow
+    defaultCondition:
+      transition: SubflowError
+  - name: LaunchNamespaceManagementSubflow
+    type: operation
+    actions:
+      - name: LaunchNamespaceManagementSubflow
+        subFlowRef: namespaceManagement
+        actionDataFilter:
+          useResults: true
+          # pick only the continue
+          results: ".continue"
+          # merge it into the state data element .namespaceManagement.continue
+          toStateData: ".namespaceManagement.continue"
+    transition: checkContinueAfterNamespace
+  - name: checkContinueAfterNamespace
+    type: switch
+    dataConditions:
+      - condition: ( .namespaceManagement.continue == true)
+        transition:
+          nextState: LaunchAAPJobSubflow
+    defaultCondition:
+      transition: SubflowError
+  - name: LaunchAAPJobSubflow
+    type: operation
+    actions:
+      - name: LaunchAAPJobSubflow
+        subFlowRef: aapJob
+    transition: checkContinueAfterAAPJob
+  - name: checkContinueAfterAAPJob
+    type: switch
+    dataConditions:
+      - condition: ( .aapJob.continue == true)
+        transition:
+          nextState: LaunchGitHubActionsSubflow
+    defaultCondition:
+      transition: SubflowError
+  - name: LaunchGitHubActionsSubflow
+    type: operation
+    actions:
+      - name: LaunchGitHubActionsSubflow
+        subFlowRef: githubActions
+    transition: checkContinueAfterGithubAction
+  - name: checkContinueAfterGithubAction
+    type: switch
+    dataConditions:
+      - condition: ( .githubActions.continue == true)
+        transition:
+          nextState: CreateArgoCDApplication
+    defaultCondition:
+      transition: SubflowError
+  - name: CreateArgoCDApplication
+    type: operation
+    actions:
+      - functionRef:
+          refName: logInfo
+          arguments:
+            message: '"Creating ArgoCD application for " + .java.artifactId'
+      - functionRef:
+          refName: createArgoprojIoV1alpha1NamespacedApplication
+          arguments:
+            namespace: $SECRET.target_application_namespace
+            apiVersion: argoproj.io/v1alpha1
+            kind: Application
+            metadata:
+              name: .java.artifactId + "-dev"
+              labels:
+                rht-gitops.com/janus-argocd: .component.repoName
+            spec:
+              destination:
+                namespace: $SECRET.target_namespace
+                server: https://kubernetes.default.svc
+              project: $SECRET.target_argocd_project
+              source:
+                repoURL: '"https://github.com/" + .component.orgName + "/" + .component.repoName + "-gitops.git"'
+                path: helm/
+                targetRevision: main
+              syncPolicy:
+                syncOptions:
+                  - CreateNamespace=true
+                  - ServerSideApply=true
+                automated:
+                  prune: true
+                  selfHeal: true
+        actionDataFilter:
+          toStateData: .argoCDResult
+    transition: SendSuccessNotification
+  - name: SendSuccessNotification
+    type: operation
+    actions:
+      - functionRef:
+          refName: createNotification
+          arguments:
+            recipients:
+              type: "entity"
+              entityRef: .notifications.recipients
+            payload:
+              title: '"AAP DB Deploy workflow " + $WORKFLOW.instanceId + " completed successfully." '
+              description: "The application was deployed using ArgoCD. Watch CD tab in the component page for deployment progress."
+              topic: "AAP DB Deploy"
+              link: '$SECRET.rhdh_url + "/catalog/default/component/" + .component.repoName + "/cd"'
+              severity: "normal"
+      - name: setOutput
+        functionRef:
+          refName: successResult
+    end: true 
+  - name: SubflowError
+    type: operation
+    actions:
+      - functionRef:
+          refName: logInfo
+          arguments:
+            message: 'Stopping master workflow after one of the subflow did not successfully fill his job'
+    end: true 

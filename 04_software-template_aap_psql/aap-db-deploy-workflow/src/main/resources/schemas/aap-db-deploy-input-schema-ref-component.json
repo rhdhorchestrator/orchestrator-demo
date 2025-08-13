@@ -2,6 +2,7 @@
   "$id": "classpath:/schemas/aap-db-deploy-input-schema-ref-component.json",
   "title": "Provide information about the new component",
   "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
   "properties": {
     "orgName": {
       "title": "Organization Name",
@@ -49,4 +50,4 @@
     "system",
     "port"
   ]
-}
+} 

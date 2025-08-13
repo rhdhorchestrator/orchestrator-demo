@@ -1,0 +1,24 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AAP DB Deploy Github flow input parameters",
+  "type": "object",
+  "properties": {
+    "component": {
+      "$ref": "aap-db-deploy-input-schema-ref-component.json",
+      "type": "object"
+    },
+    "notifications": {
+      "$ref": "aap-db-deploy-input-schema-ref-notifications.json",
+      "type": "object"
+    },
+    "java": {
+      "artifactId": {
+      "title": "Artifact ID",
+      "type": "string",
+      "description": "Maven Artifact ID",
+      "default": "spring-petclinic"
+    }
+    }
+  },
+  "required": ["component", "java", "notifications"]
+} 

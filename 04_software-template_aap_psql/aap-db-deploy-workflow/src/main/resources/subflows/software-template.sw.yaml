@@ -1,0 +1,152 @@
+specVersion: "0.8"
+id: softwareTemplate
+version: 0.0.1
+name: Software Template Launcher
+description: |
+  Subworkflow to launch a software template and monitor its completion.
+annotations:
+  - "workflow-type/infrastructure"
+dataInputSchema: ../schemas/aap-db-deploy-flow-sotware-template-input-schema.json
+start: LaunchSoftwareTemplate
+extensions:
+  - extensionid: workflow-uri-definitions
+    definitions:
+      notifications: "https://raw.githubusercontent.com/rhdhorchestrator/serverless-workflows/main/workflows/shared/specs/notifications-openapi.yaml"
+functions:
+  - name: LaunchSoftwareTemplate
+    operation: ../specs/scaffolder-openapi.yaml#createTask
+  - name: GetSoftwareTemplateTask
+    operation: ../specs/scaffolder-openapi.yaml#getTaskDetails
+  - name: createNotification
+    operation: notifications#createNotification
+  - name: logInfo
+    type: custom
+    operation: "sysout:INFO"
+  - name: templateSuccessResult
+    type: expression
+    operation: '{
+      "result": {
+      "outputs":[
+      {
+      "key":"Component in Catalog",
+      "value": $SECRET.rhdh_url + "/catalog/default/component/" + .component.repoName,
+      "format":"link"
+      }]
+      }
+      }'
+  - name: templateErrorResult
+    type: expression
+    operation: '{
+      "result": {
+      "message": "Launching software template " + $SECRET.software_template_ref + " failed.",
+      "outputs":[]
+      }
+      }'
+  - name: stop
+    type: expression
+    operation: '{ "softwareTemplate": { "continue": false }}'
+  - name: continue
+    type: expression
+    operation: '{ "softwareTemplate": { "continue": true }}'
+states:
+  - name: LaunchSoftwareTemplate
+    type: operation
+    actions:
+      - functionRef:
+          refName: LaunchSoftwareTemplate
+          arguments:
+            templateRef: $SECRET.software_template_ref
+            values:
+              port: .component.port
+              system: .component.system
+              orgName: .component.orgName
+              repoName: .component.repoName
+              description: .repositoryInfo.description
+              owner: .component.owner
+              groupId: .java.groupId
+              artifactId: .java.artifactId
+              javaPackageName: .java.javaPackageName
+              ci: .ci.ciMethod
+              imageRepository: .ci.imageRepository
+              imageNamespace: .ci.imageNamespace
+              quayUserName: '["*" * ($SECRET.quay_username | length)] | add'
+              quayPassword: '["*" * ($SECRET.quay_password | length)] | add'
+              ghToken: '["*" * ($SECRET.ghToken | length)] | add'
+            secrets:
+              quayUserName: $SECRET.quay_username
+              quayPassword: $SECRET.quay_password
+              ghToken: $SECRET.ghToken
+        actionDataFilter:
+          toStateData: .launchedTemplate
+    transition: GetSoftwareTemplate
+  - name: GetSoftwareTemplate
+    type: operation
+    actions:
+      - functionRef:
+          refName: logInfo
+          arguments:
+            message: '"Sleeping before checking the software template "'
+        sleep:
+          after: PT15S
+      - functionRef:
+          refName: GetSoftwareTemplateTask
+          arguments:
+            taskId: .launchedTemplate.id
+        actionDataFilter:
+          toStateData: .readTask
+    transition: IsTaskDone
+  - name: IsTaskDone
+    type: switch
+    dataConditions:
+      - condition: (.readTask.status == "processing")
+        transition:
+          nextState: GetSoftwareTemplate
+      - condition: (.readTask.status == "completed")
+        transition:
+          nextState: SendTaskCompletedNotification
+      - condition: (.readTask.status == "failed")
+        transition:
+          nextState: SendTaskFailureNotification
+    defaultCondition:
+      transition: GetSoftwareTemplate
+  - name: SendTaskCompletedNotification
+    type: operation
+    actions:
+      - functionRef:
+          refName: templateSuccessResult
+      - functionRef:
+          refName: continue
+      - functionRef:
+          refName: createNotification
+          arguments:
+            recipients:
+              type: "entity"
+              entityRef: .notifications.recipients
+            payload:
+              title: '"Software Template workflow " + $WORKFLOW.instanceId + " completed software template creation." '
+              description: '"Software Template workflow " + $WORKFLOW.instanceId + " completed software template creation based on " + $SECRET.software_template_ref'
+              topic: "Software Template"
+              link: '$SECRET.rhdh_url + "/catalog/default/component/" + .component.repoName'
+              severity: "normal"
+    end: true
+  - name: SendTaskFailureNotification
+    type: operation
+    actions:
+      - name: templateErrorResult
+        functionRef:
+          refName: templateErrorResult
+      - name: stop
+        functionRef:
+          refName: stop
+      - functionRef:
+          refName: createNotification
+          arguments:
+            recipients:
+              type: "entity"
+              entityRef: .notifications.recipients
+            payload:
+              title: '"Software Template workflow " + $WORKFLOW.instanceId + " failed on software template creation for repository " + .component.repoName'
+              description: '"Software Template workflow ID: " + $WORKFLOW.instanceId + " for software template " '
+              topic: "Software Template"
+              severity: "high"
+    end: true 
