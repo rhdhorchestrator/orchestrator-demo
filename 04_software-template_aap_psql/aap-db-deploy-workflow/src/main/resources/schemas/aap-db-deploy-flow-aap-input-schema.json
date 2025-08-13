@@ -1,0 +1,16 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AAP DB Deploy AAP flow input parameters",
+  "type": "object",
+  "properties": {
+    "aap": {
+      "$ref": "aap-db-deploy-input-schema-ref-aap.json",
+      "type": "object"
+    },
+    "notifications": {
+      "$ref": "aap-db-deploy-input-schema-ref-notifications.json",
+      "type": "object"
+    }
+  },
+  "required": ["aap", "notifications"]
+} 

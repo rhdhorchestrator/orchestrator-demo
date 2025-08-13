@@ -1,0 +1,110 @@
+specVersion: "0.8"
+id: aapJob
+version: 0.0.1
+name: AAP Job Executor
+description: |
+  Subworkflow to launch and monitor Ansible Automation Platform jobs.
+annotations:
+  - "workflow-type/infrastructure"
+dataInputSchema: ../schemas/aap-db-deploy-flow-aap-input-schema.json
+start: LaunchAAPJob
+extensions:
+  - extensionid: workflow-uri-definitions
+    definitions:
+      notifications: "https://raw.githubusercontent.com/rhdhorchestrator/serverless-workflows/main/workflows/shared/specs/notifications-openapi.yaml"
+functions:
+  - name: LaunchAAPJob
+    operation: ../specs/aap-openapi.yaml#launchJob
+  - name: GetAAPJob
+    operation: ../specs/aap-openapi.yaml#getJob
+  - name: createNotification
+    operation: notifications#createNotification
+  - name: logInfo
+    type: custom
+    operation: "sysout:INFO"
+  - name: stop
+    type: expression
+    operation: '{ "aapJob": { "continue":  false }}'
+  - name: continue
+    type: expression
+    operation: '{ "aapJob": { "continue":  true }}'
+states:
+  - name: LaunchAAPJob
+    type: operation
+    actions:
+      - functionRef:
+          refName: LaunchAAPJob
+          arguments:
+            job_template_id: ($SECRET.aap_template_id | tonumber)
+            limit: (.aap.limit | tonumber)
+            extra_vars:
+              rhel_inventory_group: (.aap.inventoryGroup | tonumber)
+              targetNamespace: $SECRET.target_namespace
+        actionDataFilter:
+          toStateData: .launchedJob
+    stateDataFilter:
+      output: '.launchedJob += { outputUrl: $SECRET.app_url +  "/execution/jobs/playbook/" + (.launchedJob.id|tostring) + "/output" }'
+    transition: GetAAPJob
+  - name: GetAAPJob
+    type: operation
+    actions:
+      - functionRef:
+          refName: logInfo
+          arguments:
+            message: '"Sleeping before checking the aap job " + (.launchedJob|tostring)'
+        sleep:
+          after: PT15S
+      - functionRef:
+          refName: GetAAPJob
+          arguments:
+            job_id: .launchedJob.id
+        actionDataFilter:
+          toStateData: .readJob
+    transition: IsJobDone
+  - name: IsJobDone
+    type: switch
+    dataConditions:
+      - condition: (.readJob.status == "successful")
+        transition:
+          nextState: SendAAPJobCompletedNotification
+      - condition: (.readJob.failed == true)
+        transition:
+          nextState: SendAAPJobFailureNotification
+    defaultCondition:
+      transition: GetAAPJob
+  - name: SendAAPJobFailureNotification
+    type: operation
+    actions:
+      - functionRef:
+          refName: stop
+      - functionRef:
+          refName: createNotification
+          arguments:
+            recipients:
+              type: "entity"
+              entityRef: .notifications.recipients
+            payload:
+              title: '"AAP Job workflow " + $WORKFLOW.instanceId + " failed on AAP Job." '
+              description: '"AAP Job workflow ID: " + $WORKFLOW.instanceId + " for job template id: " + $SECRET.aap_template_id + " failed."'
+              topic: "AAP Job"
+              link: ".launchedJob.outputUrl"
+              severity: "high"
+    end: true
+  - name: SendAAPJobCompletedNotification
+    type: operation
+    actions:
+      - functionRef:
+          refName: continue
+      - functionRef:
+          refName: createNotification
+          arguments:
+            recipients:
+              type: "entity"
+              entityRef: .notifications.recipients
+            payload:
+              title: '"AAP Job workflow " + $WORKFLOW.instanceId + " completed AAP Job to create DB." '
+              description: '"AAP Job workflow ID: " + $WORKFLOW.instanceId + " for job template id: " + $SECRET.aap_template_id + " completed."'
+              topic: "AAP Job"
+              link: ".launchedJob.outputUrl"
+              severity: "normal"
+    end: true 

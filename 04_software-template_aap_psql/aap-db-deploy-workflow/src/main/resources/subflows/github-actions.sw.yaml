@@ -1,0 +1,135 @@
+specVersion: "0.8"
+id: githubActions
+version: 0.0.1
+name: GitHub Actions Monitor
+description: |
+  Subworkflow to monitor GitHub Actions workflow completion.
+annotations:
+  - "workflow-type/infrastructure"
+dataInputSchema: ../schemas/aap-db-deploy-flow-github-actions-input-schema.json
+start: GetActionWorkflows
+extensions:
+  - extensionid: workflow-uri-definitions
+    definitions:
+      notifications: "https://raw.githubusercontent.com/rhdhorchestrator/serverless-workflows/main/workflows/shared/specs/notifications-openapi.yaml"
+functions:
+  - name: GetActionWorkflows
+    operation: ../specs/github-openapi.yaml#actions/list-repo-workflows
+  - name: GetActionWorkflowRuns
+    operation: ../specs/github-openapi.yaml#actions/list-workflow-runs
+  - name: createNotification
+    operation: notifications#createNotification
+  - name: logInfo
+    type: custom
+    operation: "sysout:INFO"
+  - name: stop
+    type: expression
+    operation: '{ "githubActions": { "continue":  false }}'
+  - name: continue
+    type: expression
+    operation: '{ "githubActions": { "continue":  true }}'
+  - name: errorResult
+    type: expression
+    operation: '{
+      "result": {
+      "message": "Creation of application " + .java.artifactId + " failed.",
+      "outputs":[
+      {
+      "key":"AAP Job",
+      "value": $SECRET.rhdh_url + "/catalog/default/component/" + .component.repoName,
+      "format":"link"
+      },
+      {
+      "key":"Component in Catalog",
+      "value": $SECRET.rhdh_url + "/catalog/default/component/" + .component.repoName,
+      "format":"link"
+      },
+      {
+      "key":"GitHub Action",
+      "value": ".actionWorkflowRuns.workflow_runs[0].html_url",
+      "format":"link"
+      }]
+      }
+      }'
+states:
+  - name: GetActionWorkflows
+    type: operation
+    actions:
+      - functionRef:
+          refName: GetActionWorkflows
+          arguments:
+            owner: .component.orgName
+            repo: .component.repoName
+        actionDataFilter:
+          toStateData: .actionWorkflows
+    transition: GetActionWorkflowRuns
+  - name: GetActionWorkflowRuns
+    type: operation
+    actions:
+      - functionRef:
+          refName: logInfo
+          arguments:
+            message: '"Sleeping before checking the CI action " + (.actionWorkflows.workflows[] | select(.name == "CI") | .id | tostring) + " in GitHub"'
+        sleep:
+          after: PT15S
+      - functionRef:
+          refName: GetActionWorkflowRuns
+          arguments:
+            owner: .component.orgName
+            repo: .component.repoName
+            workflow_id: .actionWorkflows.workflows[] | select(.name == "CI") | .id | tonumber
+        actionDataFilter:
+          toStateData: .actionWorkflowRuns
+    transition: IsGitHubActionDone
+  - name: IsGitHubActionDone
+    type: switch
+    dataConditions:
+      - condition: (.actionWorkflowRuns.workflow_runs[0].status == "completed" and .actionWorkflowRuns.workflow_runs[0].conclusion == "success")
+        transition:
+          nextState: SendGithubActionCompletedNotification
+      - condition: (.actionWorkflowRuns.workflow_runs[0].status == "in_progress" or .actionWorkflowRuns.workflow_runs[0].status == "queued")
+        transition: GetActionWorkflowRuns
+      - condition: (.actionWorkflowRuns.workflow_runs[0].status == "completed" and .actionWorkflowRuns.workflow_runs[0].conclusion == "failure")
+        transition: SendGithubActionFailureNotification
+    defaultCondition:
+      transition: GetActionWorkflowRuns
+  - name: SendGithubActionFailureNotification
+    type: operation
+    actions:
+      - name: setOutput
+        functionRef:
+          refName: errorResult
+      - name: stop
+        functionRef:
+          refName: stop
+      - functionRef:
+          refName: createNotification
+          arguments:
+            recipients:
+              type: "entity"
+              entityRef: .notifications.recipients
+            payload:
+              title: '"GitHub Actions workflow " + $WORKFLOW.instanceId + " failed on GitHub CI workflow."'
+              description: '"GitHub Actions workflow ID: " + $WORKFLOW.instanceId + " failed on GitHub CI workflow."'
+              topic: "GitHub Actions"
+              link: ".actionWorkflowRuns.workflow_runs[0].html_url"
+              severity: "high"
+    end: true
+  - name: SendGithubActionCompletedNotification
+    type: operation
+    actions:
+      - functionRef:
+          refName: continue
+      - functionRef:
+          refName: createNotification
+          arguments:
+            recipients:
+              type: "entity"
+              entityRef: .notifications.recipients
+            payload:
+              title: '"GitHub Actions workflow " + $WORKFLOW.instanceId + " completed GitHub CI workflow."'
+              description: '"GitHub Actions workflow ID: " + $WORKFLOW.instanceId + " successfully completed the GitHub CI workflow."'
+              topic: "GitHub Actions"
+              link: ".actionWorkflowRuns.workflow_runs[0].html_url"
+              severity: "normal"
+    end: true 

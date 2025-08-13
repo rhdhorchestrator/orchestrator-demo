@@ -132,7 +132,7 @@ function get_workflow_id {
     local workflow_file=""
     local workflow_id=""
 
-    workflow_file=$(findw "$workdir" -type f -regex '.*\.sw\.ya?ml$')
+    workflow_file=$(findw "$workdir" -type f -regex '.*\.sw\.ya?ml$' -not -path '*/subflows/*')
     if [ -z "$workflow_file" ]; then
         log_error "No workflow file found with *.sw.yaml or *.sw.yml suffix in: $workdir"
         return 10
