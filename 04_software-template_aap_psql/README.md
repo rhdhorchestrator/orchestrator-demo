@@ -191,6 +191,11 @@ With `ARGOCD_NAMESPACE` being the target namespace in which ArgoCD must deploy t
 
 Target namespace should also be labeled with `argocd.argoproj.io/managed-by: <argocd-namespace>` (e.g. `argocd.argoproj.io/managed-by: orchestrator-gitops`).
 
+## Setting up RBAC
+Currently, the subflows of a workflow are displayed at the same level as the main workflow in the Orchestrator RHDH UI.
+
+You can hide the subflows using RBAC, see https://github.com/redhat-developer/rhdh-plugins/blob/orchestrator-1.6/workspaces/orchestrator/docs/Permissions.md for more information.
+
 ## Running the Workflow
 Once the workflow's pods are ready, use the RHDH Orchestrator plugin to invoke the workflow.
 Monitor the Results pane and notifications for workflow execution progress.
