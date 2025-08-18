@@ -69,7 +69,7 @@ proxy:
     '/mytesthttpserver':
       target: 'http://mytesthttpservice.sonataflow-infra.svc.cluster.local:80'
       allowedMethods: ['GET', 'POST']
-      allowedHeaders: ['test-header']
+      allowedHeaders: ['test-header', 'Authorization']
 ```
 
 > **NOTE**
