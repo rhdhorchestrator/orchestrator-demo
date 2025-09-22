@@ -15,6 +15,8 @@ This directory contains the source code for a serverless workflow project. This 
 ### Dynamic Course Select Workflow
 This is a simple workflow demonstrating the use of the orchestrator-form-widgets library with dynamic form behavior.
 
+Comprehensive documentation with examples and full list of widgets can be found in [orchestratorFormWidgets.md](https://github.com/redhat-developer/rhdh-plugins/blob/main/workspaces/orchestrator/docs/orchestratorFormWidgets.md).
+
 *Input Schema* Uses dynamic-course-select__main-schema.json, as explained below. 
 
 *Execution Flow:*
