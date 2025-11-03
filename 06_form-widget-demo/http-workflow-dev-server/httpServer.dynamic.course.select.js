@@ -61,10 +61,13 @@ app.post('/courses', (req, res) => {
   if (studentName && studentName !== UNDEFINED) {
     optionsForAutocomplete.push(`I want to be a course for ${studentName}`);
   }
+  optionsForAutocomplete.push('A course providing null value to be ignored as the default value for the Room selection');
 
   const result = {
     // Use whatever structure here, just make sure the selectors in the data input schema picks correct values and types
-    mycourses: { mydefault: optionsForAutocomplete[0] },
+    mycourses: {
+      mydefault: optionsForAutocomplete[0]
+    },
     listofcourses: { all: optionsForAutocomplete },
   };
 
@@ -193,14 +196,28 @@ app.post('/certificatesschema', (req, res) => {
   // HTTP 200
   res.send(JSON.stringify(complexResponse));
 });
+
+let roomCounter = 0;
 app.get('/rooms', (req, res) => {
   logRequest(req);
 
-  // const courseName = req.query?.coursename;
+  const courseName = req.query?.coursename;
 
-  const result = {
-    room: { mydefault: 'Dynamically fetched default room name' },
-  };
+  let result;
+  if (courseName === 'A course providing null value to be ignored as the default value for the Room selection') {
+    result = {
+      room: {
+        /* the "null" is an ignored value
+         * proper null value causes an error - a string is expected
+         */
+        mydefault: "null"
+      },
+    };
+  } else {
+    result = {
+      room: { mydefault: `Dynamically fetched default room name (counter: ${roomCounter++})` },
+    };
+  }
 
   // HTTP 200
   res.send(JSON.stringify(result));
@@ -351,11 +368,11 @@ app.get('/drinks', (req, res) => {
     myWarehouse: {
       food: {},
       drinks: [
-        {"name": "water", "price": 10},
-        {"name": "sparkling water", "price": 15},
-        {"name": "water with lemon", "price": 20},
-        {"name": "water on rocks", "price": 25},
-        {"name": "prohibited drink", "price": 30},
+        { "name": "water", "price": 10 },
+        { "name": "sparkling water", "price": 15 },
+        { "name": "water with lemon", "price": 20 },
+        { "name": "water on rocks", "price": 25 },
+        { "name": "prohibited drink", "price": 30 },
       ]
     },
   }
@@ -372,11 +389,21 @@ app.get('/mascots', (req, res) => {
   const studentName = req.query?.studentname;
 
   const allMascots = [
-    'penguin',
-    'pikachu',
-    'dragon',
+    // the schema further states that the first two items are mandatory
+    'penguin-is-mandatory',
+    'pikachu-is-mandatory-as-well',
+    'dragon-can-be-unselected',
+    // following will be just listed to be eventually selected by the user
     'dog',
     'cat'
+  ];
+
+  const defaultMascots = [
+    // no need for the first and second item, since they are mandatory
+    allMascots[0],
+
+    // the following is not mandatory but default - can be unselected by the user
+    allMascots[2],
   ];
 
   if (studentName && studentName !== UNDEFINED) {
@@ -385,6 +412,7 @@ app.get('/mascots', (req, res) => {
 
   const response = {
     allMascots,
+    defaultMascots,
   }
 
   // HTTP 200
@@ -425,6 +453,21 @@ app.post('/validatedrinks', (req, res) => {
   res.status(200);
   res.send('Valid');
 });
+
+app.get('/summary', (req, res) => {
+  logRequest(req);
+
+  const studentName = req.query?.studentname;
+  const courseName = req.query?.coursename;
+
+  const response = {
+    studentCourseSummary: `The ${studentName} student selected ${courseName} course`,
+  };
+
+  // HTTP 200
+  res.send(JSON.stringify(response));
+});
+
 app.listen(port, () => {
   // eslint-disable-next-line no-console
   console.info(
