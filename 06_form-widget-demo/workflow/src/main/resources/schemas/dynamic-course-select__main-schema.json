@@ -189,8 +189,8 @@
       "type": "string",
       "title": "Read-only example ofActiveTextInput",
       "ui:widget": "ActiveTextInput",
+      "readOnly": true,
       "ui:props": {
-        "ui:readonly": true,
         "devonlycomment": "This is a read-only example of ActiveTextInput, it fetches data from the /summary endpoint and displays the result. The field will be populated with the value but the user can not select change it.",
         "fetch:url": "$${{backend.baseUrl}}/api/proxy/mytesthttpserver/summary?studentname=$${{current.studentName}}&coursename=$${{current.courseName}}",
         "fetch:response:value": "studentCourseSummary"
