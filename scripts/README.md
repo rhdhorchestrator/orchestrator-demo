@@ -186,7 +186,7 @@ kubectl version --client 2>/dev/null && echo "✅ kubectl: OK" || echo "⚠️ k
 | Flag | Description | Default |
 |------|-------------|---------|
 | `-i\|--image=<string>` | **[Required]** Full container image path | - |
-| `-b\|--builder-image=<string>` | Override builder image | `registry.redhat.io/openshift-serverless-1/logic-swf-builder-rhel8:1.36.0-8` |
+| `-b\|--builder-image=<string>` | Override builder image | `registry.redhat.io/openshift-serverless-1/logic-swf-builder-rhel9:1.37.0-19` |
 | `-r\|--runtime-image=<string>` | Override runtime image | `registry.access.redhat.com/ubi9/openjdk-17:1.21-2` |
 | `-d\|--dockerfile=<string>` | Path to custom Dockerfile | Uses embedded default |
 | `-n\|--namespace=<string>` | Target Kubernetes namespace | Current namespace |
@@ -268,7 +268,7 @@ By default, the script configures PostgreSQL persistence for workflow state. Thi
 
 The script uses Red Hat's OpenShift Serverless Logic images by default:
 
-- **Builder**: `registry.redhat.io/openshift-serverless-1/logic-swf-builder-rhel8:1.36.0-8`
+- **Builder**: `registry.redhat.io/openshift-serverless-1/logic-swf-builder-rhel9:1.37.0-19`
 - **Runtime**: `registry.access.redhat.com/ubi9/openjdk-17:1.21-2`
 
 ### Custom Dockerfiles

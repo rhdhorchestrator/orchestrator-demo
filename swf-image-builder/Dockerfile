@@ -1,4 +1,4 @@
-FROM registry.redhat.io/openshift-serverless-1/logic-swf-builder-rhel8:1.36.0-8
+FROM registry.redhat.io/openshift-serverless-1/logic-swf-builder-rhel9:1.37.0-19
 
 ENV QUARKUS_PLATFORM_GROUPID=com.redhat.quarkus.platform
 ENV QUARKUS_PLATFORM_VERSION=3.15.4.redhat-00001
