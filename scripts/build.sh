@@ -6,7 +6,7 @@ set -euo pipefail
 script_name="${BASH_SOURCE:-$0}"
 
 # Default container images
-DEFAULT_BUILDER_IMAGE="registry.redhat.io/openshift-serverless-1/logic-swf-builder-rhel8:1.36.0-8"
+DEFAULT_BUILDER_IMAGE="registry.redhat.io/openshift-serverless-1/logic-swf-builder-rhel9:1.37.0-19"
 DEFAULT_RUNTIME_IMAGE="registry.access.redhat.com/ubi9/openjdk-17:1.21-2"
 
 # Logger functions
@@ -499,7 +499,7 @@ function build_image {
 
     # Base extensions that are always included
     local base_quarkus_extensions="\
-    io.quarkiverse.openapi.generator:quarkus-openapi-generator:2.9.1-lts,\
+    io.quarkiverse.openapi.generator:quarkus-openapi-generator:2.11.0-lts,\
     org.kie:kie-addons-quarkus-monitoring-sonataflow,\
     org.kie:kogito-addons-quarkus-jobs-knative-eventing"
 
@@ -507,8 +507,8 @@ function build_image {
     if [[ -z "${args["no-persistence"]:-}" ]]; then
         base_quarkus_extensions="${base_quarkus_extensions},\
         org.kie:kie-addons-quarkus-persistence-jdbc,\
-        io.quarkus:quarkus-jdbc-postgresql:3.15.4.redhat-00001,\
-        io.quarkus:quarkus-agroal:3.15.4.redhat-00001"
+        io.quarkus:quarkus-jdbc-postgresql:3.20.3.redhat-00003,\
+        io.quarkus:quarkus-agroal:3.20.3.redhat-00003"
         log_info "Including persistence extensions"
     else
         log_info "Skipping persistence extensions"
