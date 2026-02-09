@@ -18,7 +18,7 @@ spec:
       schema: schemas/dynamic-course-select__main-schema.json
     functions:
       - name: PrintSuccessData
-        operation: '{ "result": { "message": "The workflow finished successfully.", "outputs": [ { "key": "resourceOne", "value": $WORKFLOW.instanceId }, { "key": "studentName", "value": .studentName }, { "key": "courseName", "value": .courseName }, { "key": "room", "value": .courseDetails.room }, { "key": "requestCertificate", "value": .courseDetails.requestCertificate }, { "key": "complimentaryDrinks", "value": .complimentaryDrinks }, { "key": "teacher", "value": .preferredTeacher } ] } }'
+        operation: '{ "result": { "message": "The workflow finished successfully.", "outputs": [ { "key": "resourceOne", "value": $WORKFLOW.instanceId }, { "key": "studentName", "value": .studentName }, { "key": "courseName", "value": .courseName }, { "key": "room", "value": .courseDetails.room }, { "key": "requestCertificate", "value": .courseDetails.requestCertificate }, { "key": "complimentaryDrinks", "value": .complimentaryDrinks }, { "key": "teacher", "value": .preferredTeacher }, { "key": "hiddenEnrollmentId", "value": .hiddenEnrollmentId }, { "key": "hiddenSummarySnapshot", "value": .hiddenSummarySnapshot }, { "key": "hiddenStepAuditToken", "value": .hiddenStep.auditToken }, { "key": "reviewDetails", "value": .reviewDetails } ] } }'
         type: expression
     start:
       stateName: Start
