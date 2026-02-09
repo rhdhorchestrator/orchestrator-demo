@@ -12,6 +12,11 @@ data:
         "courseName",
         "courseDetails",
         "suggestedCourses",
+        "hiddenEnrollmentId",
+        "hiddenSummarySnapshot",
+        "hiddenStep",
+        "conditionalHiddenNote",
+        "reviewDetails",
         "*"
       ],
       "properties": {
@@ -68,6 +73,74 @@ data:
           "type": "object",
           "title": "This title will never be displayed. This 'courseDetails' property is just a placeholder to be replaced by the 'mySchemaUpdater' based on the fetched response. Will contain complex data later.",
           "ui:widget": "hidden"
+        },
+        "hiddenEnrollmentId": {
+          "type": "string",
+          "title": "Hidden enrollment ID (ui:hidden demo with default)",
+          "ui:hidden": true,
+          "default": "enroll-0001"
+        },
+        "hiddenSummarySnapshot": {
+          "type": "string",
+          "title": "Hidden summary snapshot (ui:hidden demo with ActiveTextInput)",
+          "ui:hidden": true,
+          "ui:widget": "ActiveTextInput",
+          "readOnly": true,
+          "ui:props": {
+            "fetch:url": "$${{backend.baseUrl}}/api/proxy/mytesthttpserver/summary?studentname=$${{current.studentName}}&coursename=$${{current.courseName}}",
+            "fetch:response:value": "studentCourseSummary",
+            "fetch:retrigger": [
+              "current.studentName",
+              "current.courseName"
+            ]
+          }
+        },
+        "hiddenStep": {
+          "type": "object",
+          "title": "Hidden step demo (ui:hidden on object)",
+          "ui:hidden": true,
+          "properties": {
+            "auditToken": {
+              "type": "string",
+              "title": "Audit token",
+              "default": "audit-0001"
+            }
+          }
+        },
+        "conditionalHiddenNote": {
+          "type": "string",
+          "title": "Conditionally hidden note (ui:hidden expression demo)",
+          "ui:hidden": "$${{current.courseName == 'complexCourse'}}",
+          "default": "Visible unless the course is complexCourse."
+        },
+        "reviewDetails": {
+          "type": "object",
+          "title": "Review details (nested object demo)",
+          "properties": {
+            "notes": {
+              "type": "string",
+              "title": "Notes"
+            },
+            "metadata": {
+              "type": "object",
+              "title": "Metadata",
+              "properties": {
+                "referenceCode": {
+                  "type": "string",
+                  "title": "Reference code"
+                },
+                "priority": {
+                  "type": "string",
+                  "title": "Priority",
+                  "enum": [
+                    "low",
+                    "medium",
+                    "high"
+                  ]
+                }
+              }
+            }
+          }
         },
         "suggestedCourses": {
           "type": "string",
