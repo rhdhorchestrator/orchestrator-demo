@@ -9,8 +9,8 @@ The workflow makes three HTTP calls to a sample server, each using a different s
 ## Workflow application configuration
 Application properties can be initialized from environment variables before running the application:
 
-| Name | Description | Default |
-|------|-------------|---------|
+| Property | Description | Default |
+|----------|-------------|---------|
 | `auth-server-url` | Keycloak realm URL | `http://example-kc-service.keycloak:8080/realms/quarkus` |
 | `client-id` | OIDC client ID | `quarkus-app` |
 | `client-secret` | OIDC client secret | `lVGSvdaoDUem7lqeAnqXn1F92dCPbQea` |
@@ -35,7 +35,7 @@ If you do not already have a Keycloak instance, install one using Operator Hub:
 > * A Keycloak instance for OIDC
 
 ## Input
-No needed input. Tokens are provided via `authTokens` in the execution request.
+No `inputData` fields are required. However, the execution request must include `authTokens` to supply the bearer tokens for propagation (see [Usage](#usage)).
 
 ## Installation
 
@@ -54,7 +54,7 @@ These manifests are ordered numerically to reflect their intended deployment seq
 > - Keycloak is accessible at the URL configured in `application.properties`.
 
 ```bash
-oc apply -n sonataflow-infra -f ./manifests
+oc apply -n sonataflow-infra -f ./09_token_propagation/manifests
 ```
 
 ### Verify the Deployment
@@ -80,7 +80,7 @@ QUARKUS_EXTENSIONS="io.quarkus:quarkus-oidc-client,io.quarkus:quarkus-oidc" \
 
 Push the image:
 ```bash
-POCKER=$(command -v podman || command -v docker) "$@"
+POCKER=$(command -v podman || command -v docker)
 $POCKER push quay.io/orchestrator/demo-token-propagation:latest
 ```
 
@@ -93,19 +93,20 @@ QUARKUS_EXTENSIONS="io.quarkus:quarkus-oidc-client,io.quarkus:quarkus-oidc" \
 ## Usage
 To execute the workflow, send a request with `authTokens`:
 ```bash
+export RHDH_ROUTE=$(oc get route -n rhdh-operator backstage-developer-hub -o jsonpath='{.spec.host}')
 export RHDH_BEARER_TOKEN=$(oc get secrets -n rhdh-operator backstage-backend-auth-secret -o go-template='{{ .data.BACKEND_SECRET  }}' | base64 -d)
 
 curl -v -XPOST \
   -H "Content-type: application/json" \
   -H "Authorization: ${RHDH_BEARER_TOKEN}" \
-  ${RHDH_ROUTE}/api/orchestrator/v2/workflows/token-propagation/execute \
+  https://${RHDH_ROUTE}/api/orchestrator/v2/workflows/token-propagation/execute \
   -d '{"inputData":{}, "authTokens": [{"provider": "First", "token": "FIRST"}, {"provider": "Other", "token": "OTHER"}, {"provider": "Simple", "token": "SIMPLE"}]}'
 ```
 
 > [!WARNING]
 > With the default `quarkus.oidc` properties, the `X-Authorization-Other` header must contain a valid OIDC token. If it does not, the workflow will return a 401 error. Generate a real token from Keycloak:
 > ```bash
-> export access_token=$(curl -X POST http://localhost:8080/realms/${REALM}/protocol/openid-connect/token --user ${CLIENT_ID}:${CLIENT_SECRET} -H 'content-type: application/x-www-form-urlencoded' -d 'username=${USERNAME}&password=${PASSWORD}&grant_type=password' | jq --raw-output '.access_token')
+> export access_token=$(curl -X POST "http://localhost:8080/realms/${REALM}/protocol/openid-connect/token" --user "${CLIENT_ID}:${CLIENT_SECRET}" -H 'content-type: application/x-www-form-urlencoded' -d "username=${USERNAME}&password=${PASSWORD}&grant_type=password" | jq --raw-output '.access_token')
 > ```
 
 Then check the logs for the `sample-server` pod to verify headers were propagated:
