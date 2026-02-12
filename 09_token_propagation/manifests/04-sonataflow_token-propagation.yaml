@@ -1,0 +1,121 @@
+apiVersion: sonataflow.org/v1alpha08
+kind: SonataFlow
+metadata:
+  annotations:
+    sonataflow.org/description: Propagate token
+    sonataflow.org/expressionLang: jq
+    sonataflow.org/profile: gitops
+    sonataflow.org/version: "1.0"
+  creationTimestamp: null
+  labels:
+    app: token-propagation
+    app.kubernetes.io/component: serverless-workflow
+    app.kubernetes.io/instance: token-propagation
+    app.kubernetes.io/managed-by: sonataflow-operator
+    app.kubernetes.io/name: token-propagation
+    app.kubernetes.io/version: main
+    sonataflow.org/workflow-app: token-propagation
+    sonataflow.org/workflow-namespace: ""
+  name: token-propagation
+spec:
+  flow:
+    functions:
+      - name: getWithBearerTokenSecurityScheme
+        operation: specs/sample-server.yaml#getWithBearerTokenSecurityScheme
+        type: rest
+      - name: getWithOtherBearerTokenSecurityScheme
+        operation: specs/sample-server.yaml#getWithOtherBearerTokenSecurityScheme
+        type: rest
+      - name: getWithSimpleBearerTokenSecurityScheme
+        operation: specs/sample-server.yaml#getWithSimpleBearerTokenSecurityScheme
+        type: rest
+      - name: print
+        operation: sysout
+        type: custom
+      - name: getBasicIdentity
+        operation: .identity=($WORKFLOW.headers["x-authorization-basic"] | @base64d | split(":")[0])
+        type: expression
+      - name: successResult
+        operation: '{ "result": { "completedWith":"success", "message": "Token propagated, check the simple server logs: " + $WORKFLOW.identity, "outputs":[] } }'
+        type: expression
+    start:
+      stateName: Print inputs
+    states:
+      - actionMode: sequential
+        actions:
+          - actionDataFilter:
+              useResults: true
+            functionRef:
+              arguments:
+                message: '${"Identity: " + $WORKFLOW.identity }'
+              invoke: sync
+              refName: print
+            name: print
+          - actionDataFilter:
+              useResults: true
+            functionRef:
+              invoke: sync
+              refName: getBasicIdentity
+            name: getBasicIdentity
+          - actionDataFilter:
+              useResults: true
+            functionRef:
+              arguments:
+                message: '${"Basic Identity: " + .identity }'
+              invoke: sync
+              refName: print
+            name: printBasicIdentity
+          - actionDataFilter:
+              useResults: true
+            functionRef:
+              invoke: sync
+              refName: getWithBearerTokenSecurityScheme
+            name: getWithBearerTokenSecurityScheme
+          - actionDataFilter:
+              useResults: true
+            functionRef:
+              invoke: sync
+              refName: getWithOtherBearerTokenSecurityScheme
+            name: getWithOtherBearerTokenSecurityScheme
+          - actionDataFilter:
+              useResults: true
+            functionRef:
+              invoke: sync
+              refName: getWithSimpleBearerTokenSecurityScheme
+            name: getWithSimpleBearerTokenSecurityScheme
+          - actionDataFilter:
+              useResults: true
+            functionRef:
+              invoke: sync
+              refName: successResult
+            name: setOutput
+        end:
+          terminate: true
+        name: Print inputs
+        type: operation
+  podTemplate:
+    container:
+      image: quay.io/orchestrator/demo-token-propagation:latest
+      resources: {}
+  resources:
+    configMaps:
+      - configMap:
+          name: 01-token-propagation-resources-schemas
+        workflowPath: schemas
+      - configMap:
+          name: 02-token-propagation-resources-specs
+        workflowPath: specs
+  persistence:
+    postgresql:
+      secretRef:
+        name: sonataflow-psql-postgresql
+        userKey: postgres-username
+        passwordKey: postgres-password
+      serviceRef:
+        name: sonataflow-psql-postgresql
+        port: 5432
+        databaseName: sonataflow
+        databaseSchema: token-propagation
+status:
+  address: {}
+  lastTimeRecoverAttempt: null

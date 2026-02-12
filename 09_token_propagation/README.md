@@ -74,20 +74,20 @@ To build the workflow image and push it to the image registry, use the [../scrip
 
 This workflow requires additional Quarkus extensions for OIDC support:
 ```bash
-QUARKUS_EXTENSIONS="io.quarkus:quarkus-oidc-client-filter,io.quarkus:quarkus-oidc" \
-  ../scripts/build.sh --image=quay.io/orchestrator/demo-token-propagation
+QUARKUS_EXTENSIONS="io.quarkus:quarkus-oidc-client,io.quarkus:quarkus-oidc" \
+  ../scripts/build.sh --image=quay.io/orchestrator/demo-token-propagation:latest
 ```
 
 Push the image:
 ```bash
 POCKER=$(command -v podman || command -v docker) "$@"
-$POCKER push quay.io/orchestrator/demo-token-propagation
+$POCKER push quay.io/orchestrator/demo-token-propagation:latest
 ```
 
 Build, generate manifests, and deploy in one step:
 ```bash
-QUARKUS_EXTENSIONS="io.quarkus:quarkus-oidc-client-filter,io.quarkus:quarkus-oidc" \
-  ../scripts/build.sh --image=quay.io/orchestrator/demo-token-propagation --deploy
+QUARKUS_EXTENSIONS="io.quarkus:quarkus-oidc-client,io.quarkus:quarkus-oidc" \
+  ../scripts/build.sh --image=quay.io/orchestrator/demo-token-propagation:latest --deploy
 ```
 
 ## Usage
