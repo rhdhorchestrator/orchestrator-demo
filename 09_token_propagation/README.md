@@ -2,9 +2,9 @@
 This workflow demonstrates how to configure automatic token propagation from incoming requests to downstream HTTP service calls using OIDC security schemes and Quarkus configuration.
 
 The workflow makes three HTTP calls to a sample server, each using a different security scheme:
-- **BearerToken** (OAuth2 client credentials) - propagated via `X-Authorization-Oauth2` header
-- **BearerTokenOther** (OAuth2 client credentials) - propagated via `X-Authorization-Oauth2` header
-- **SimpleBearerToken** (HTTP bearer) - propagated via `X-Authorization-Simplebearertoken` header
+- **BearerToken** (OAuth2 client credentials) - propagated via `X-Authorization-First` header
+- **BearerTokenOther** (OAuth2 client credentials) - propagated via `X-Authorization-Other` header
+- **SimpleBearerToken** (HTTP bearer) - propagated via `X-Authorization-Simple` header
 
 ## Workflow application configuration
 Application properties can be initialized from environment variables before running the application:
@@ -39,9 +39,12 @@ No `inputData` fields are required. However, the execution request must include 
 
 ## Installation
 
+> [!NOTE]
+> This example uses the `rhdh-operator` namespace, which is the recommended default namespace for Red Hat Developer Hub operator deployments. The sample server service URL in `application.properties` and all deployment commands assume this namespace.
+
 ### Deploy the sample server
 ```bash
-TARGET_NS=sonataflow-infra
+TARGET_NS=rhdh-operator
 oc apply -n ${TARGET_NS} -f sample-server/00-deploy.yaml
 ```
 
@@ -54,13 +57,13 @@ These manifests are ordered numerically to reflect their intended deployment seq
 > - Keycloak is accessible at the URL configured in `application.properties`.
 
 ```bash
-oc apply -n sonataflow-infra -f ./09_token_propagation/manifests
+oc apply -n rhdh-operator -f ./09_token_propagation/manifests
 ```
 
 ### Verify the Deployment
 To confirm the workflow was deployed successfully, run:
 ```bash
-oc get sonataflow -n sonataflow-infra token-propagation
+oc get sonataflow -n rhdh-operator token-propagation
 ```
 
 Expected output:
@@ -118,21 +121,20 @@ curl -sk -X POST "https://${RHDH_ROUTE}/api/orchestrator/v2/workflows/token-prop
 
 Then check the logs for the `sample-server` pod to verify headers were propagated:
 ```bash
-oc logs -n sonataflow-infra -l app=sample-server
+oc logs -n rhdh-operator -l app=sample-server
 ```
 
 Expected output shows each endpoint receiving the propagated authorization headers:
 ```
 ================ Headers for first ================
-X-Authorization-Oauth2: <keycloak-jwt>
-X-Authorization-Simplebearertoken: test-simple-bearer-token-value
+X-Authorization-First: <keycloak-jwt>
+X-Authorization-Simple: test-simple-bearer-token-value
 ...
 ================ Headers for other ================
-X-Authorization-Oauth2: <keycloak-jwt>
-X-Authorization-Simplebearertoken: test-simple-bearer-token-value
+X-Authorization-Other: <keycloak-jwt>
+X-Authorization-Simple: test-simple-bearer-token-value
 ...
 ================ Headers for simple ================
-X-Authorization-Oauth2: <keycloak-jwt>
-X-Authorization-Simplebearertoken: test-simple-bearer-token-value
+X-Authorization-Simple: test-simple-bearer-token-value
 ...
 ```

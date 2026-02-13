@@ -46,7 +46,7 @@ data:
     quarkus.openapi-generator.sample_server_yaml.auth.SimpleBearerToken.header-name=X-Authorization-Simple
 
     quarkus.tls.trust-all=true
-    quarkus.rest-client.sample_server_yaml.url=http://sample-server-service.sonataflow-infra
+    quarkus.rest-client.sample_server_yaml.url=http://sample-server-service.rhdh-operator
 
     kie.flyway.enabled=true
 
