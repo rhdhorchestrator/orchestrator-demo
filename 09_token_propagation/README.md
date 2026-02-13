@@ -1,7 +1,7 @@
 # Token Propagation workflow
 This workflow demonstrates how to configure automatic token propagation from incoming requests to downstream HTTP service calls using OIDC security schemes and Quarkus configuration.
 
-The workflow makes three HTTP calls to a sample server, each using a different security scheme:
+The workflow uses the `jwt-parser:extractUser` custom function to parse the propagated JWT token and extract user claims (e.g., `preferred_username`). It then makes three HTTP calls to a sample server, each using a different security scheme:
 - **BearerToken** (OAuth2 client credentials) - propagated via `X-Authorization-First` header
 - **BearerTokenOther** (OAuth2 client credentials) - propagated via `X-Authorization-Other` header
 - **SimpleBearerToken** (HTTP bearer) - propagated via `X-Authorization-Simple` header
@@ -75,9 +75,9 @@ token-propagation     gitops    1.0             True
 ## Building the workflow
 To build the workflow image and push it to the image registry, use the [../scripts/build.sh](../scripts/build.sh) script.
 
-This workflow requires additional Quarkus extensions for OIDC support:
+This workflow requires additional Quarkus extensions for OIDC and JWT parsing support:
 ```bash
-QUARKUS_EXTENSIONS="io.quarkus:quarkus-oidc-client,io.quarkus:quarkus-oidc" \
+QUARKUS_EXTENSIONS="io.quarkus:quarkus-oidc-client,io.quarkus:quarkus-oidc,org.apache.kie.sonataflow:sonataflow-addons-quarkus-jwt-parser" \
   ../scripts/build.sh --image=quay.io/orchestrator/demo-token-propagation:latest
 ```
 
@@ -89,7 +89,7 @@ $POCKER push quay.io/orchestrator/demo-token-propagation:latest
 
 Build, generate manifests, and deploy in one step:
 ```bash
-QUARKUS_EXTENSIONS="io.quarkus:quarkus-oidc-client,io.quarkus:quarkus-oidc" \
+QUARKUS_EXTENSIONS="io.quarkus:quarkus-oidc-client,io.quarkus:quarkus-oidc,org.apache.kie.sonataflow:sonataflow-addons-quarkus-jwt-parser" \
   ../scripts/build.sh --image=quay.io/orchestrator/demo-token-propagation:latest --deploy
 ```
 

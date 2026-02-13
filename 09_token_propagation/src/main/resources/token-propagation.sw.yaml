@@ -13,9 +13,9 @@ functions:
   - name: print
     type: custom
     operation: sysout
-  - name: getBasicIdentity
-    type: expression
-    operation: '.identity=($WORKFLOW.headers["x-authorization-basic"] | @base64d | split(":")[0])'
+  - name: extractUser
+    type: custom
+    operation: jwt-parser:extractUser
   - name: successResult
     type: expression
     operation: '{
@@ -35,14 +35,16 @@ states:
           refName: print
           arguments:
             message: '${"Identity: " + $WORKFLOW.identity }'
-      - name: getBasicIdentity
+      - name: extractUser
         functionRef:
-          refName: getBasicIdentity
-      - name: printBasicIdentity
+          refName: extractUser
+          arguments:
+            token: '${ $WORKFLOW.headers."X-Authorization-Oauth2" }'
+      - name: printExtractedUser
         functionRef:
           refName: print
           arguments:
-            message: '${"Basic Identity: " + .identity }'
+            message: '${"Extracted User: " + .preferred_username }'
       - name: "getWithBearerTokenSecurityScheme"
         functionRef:
           refName: getWithBearerTokenSecurityScheme

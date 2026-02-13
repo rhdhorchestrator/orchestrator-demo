@@ -32,9 +32,9 @@ spec:
       - name: print
         operation: sysout
         type: custom
-      - name: getBasicIdentity
-        operation: .identity=($WORKFLOW.headers["x-authorization-basic"] | @base64d | split(":")[0])
-        type: expression
+      - name: extractUser
+        operation: jwt-parser:extractUser
+        type: custom
       - name: successResult
         operation: '{ "result": { "completedWith":"success", "message": "Token propagated, check the simple server logs: " + $WORKFLOW.identity, "outputs":[] } }'
         type: expression
@@ -54,17 +54,19 @@ spec:
           - actionDataFilter:
               useResults: true
             functionRef:
+              arguments:
+                token: '${ $WORKFLOW.headers."X-Authorization-Oauth2" }'
               invoke: sync
-              refName: getBasicIdentity
-            name: getBasicIdentity
+              refName: extractUser
+            name: extractUser
           - actionDataFilter:
               useResults: true
             functionRef:
               arguments:
-                message: '${"Basic Identity: " + .identity }'
+                message: '${"Extracted User: " + .preferred_username }'
               invoke: sync
               refName: print
-            name: printBasicIdentity
+            name: printExtractedUser
           - actionDataFilter:
               useResults: true
             functionRef:
