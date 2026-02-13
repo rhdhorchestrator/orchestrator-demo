@@ -2,9 +2,9 @@
 This workflow demonstrates how to configure automatic token propagation from incoming requests to downstream HTTP service calls using OIDC security schemes and Quarkus configuration.
 
 The workflow makes three HTTP calls to a sample server, each using a different security scheme:
-- **BearerToken** (OAuth2 client credentials) - propagated via `X-Authorization-First` header
-- **BearerTokenOther** (OAuth2 client credentials) - propagated via `X-Authorization-Other` header
-- **SimpleBearerToken** (HTTP bearer) - propagated via `X-Authorization-Simple` header
+- **BearerToken** (OAuth2 client credentials) - propagated via `X-Authorization-Oauth2` header
+- **BearerTokenOther** (OAuth2 client credentials) - propagated via `X-Authorization-Oauth2` header
+- **SimpleBearerToken** (HTTP bearer) - propagated via `X-Authorization-Simplebearertoken` header
 
 ## Workflow application configuration
 Application properties can be initialized from environment variables before running the application:
@@ -91,38 +91,48 @@ QUARKUS_EXTENSIONS="io.quarkus:quarkus-oidc-client,io.quarkus:quarkus-oidc" \
 ```
 
 ## Usage
-To execute the workflow, send a request with `authTokens`:
+The orchestrator API requires a Backstage identity token, not a backend secret. Obtain one by exchanging a Keycloak password grant refresh token with the Backstage auth endpoint.
+
+**Step 1 -- Get a Keycloak token via password grant:**
+```bash
+export KC_ROUTE=$(oc get route keycloak -n rhsso-operator -o jsonpath='{.spec.host}')
+export KC_TOKEN_RESPONSE=$(curl -sk -X POST "https://${KC_ROUTE}/auth/realms/basic/protocol/openid-connect/token" -H "Content-Type: application/x-www-form-urlencoded" -d "grant_type=password&client_id=rhdh&client_secret=${KC_CLIENT_SECRET}&username=${VERIFICATION_USER}&password=${VERIFICATION_PASSWORD}&scope=openid")
+export REFRESH_TOKEN=$(echo "$KC_TOKEN_RESPONSE" | jq -r '.refresh_token // empty')
+export OIDC_TOKEN=$(echo "$KC_TOKEN_RESPONSE" | jq -r '.access_token // empty')
+```
+
+**Step 2 -- Exchange the refresh token for a Backstage identity token:**
 ```bash
 export RHDH_ROUTE=$(oc get route -n rhdh-operator backstage-developer-hub -o jsonpath='{.spec.host}')
-export RHDH_BEARER_TOKEN=$(oc get secrets -n rhdh-operator backstage-backend-auth-secret -o go-template='{{ .data.BACKEND_SECRET  }}' | base64 -d)
+export BACKSTAGE_RESPONSE=$(curl -sk "https://${RHDH_ROUTE}/api/auth/oidc/refresh?optional&scope=openid%20profile%20email&env=development" -H "x-requested-with: XMLHttpRequest" --cookie "oidc-refresh-token=${REFRESH_TOKEN}")
+export BACKSTAGE_TOKEN=$(echo "$BACKSTAGE_RESPONSE" | jq -r '.backstageIdentity.token // empty')
+```
 
-curl -v -XPOST \
-  -H "Content-type: application/json" \
-  -H "Authorization: ${RHDH_BEARER_TOKEN}" \
-  https://${RHDH_ROUTE}/api/orchestrator/v2/workflows/token-propagation/execute \
-  -d '{"inputData":{}, "authTokens": [{"provider": "First", "token": "FIRST"}, {"provider": "Other", "token": "OTHER"}, {"provider": "Simple", "token": "SIMPLE"}]}'
+**Step 3 -- Execute the workflow:**
+```bash
+curl -sk -X POST "https://${RHDH_ROUTE}/api/orchestrator/v2/workflows/token-propagation/execute" -H "Content-Type: application/json" -H "Authorization: Bearer ${BACKSTAGE_TOKEN}" -d '{"inputData":{}, "authTokens": [{"provider": "OAuth2", "token": "'"${OIDC_TOKEN}"'"}, {"provider": "SimpleBearerToken", "token": "test-simple-bearer-token-value"}]}'
 ```
 
 > [!WARNING]
-> With the default `quarkus.oidc` properties, the `X-Authorization-Other` header must contain a valid OIDC token. If it does not, the workflow will return a 401 error. Generate a real token from Keycloak:
-> ```bash
-> export access_token=$(curl -X POST "http://localhost:8080/realms/${REALM}/protocol/openid-connect/token" --user "${CLIENT_ID}:${CLIENT_SECRET}" -H 'content-type: application/x-www-form-urlencoded' -d "username=${USERNAME}&password=${PASSWORD}&grant_type=password" | jq --raw-output '.access_token')
-> ```
+> The `OAuth2` auth token must contain a valid Keycloak OIDC token. If it does not, the workflow will return a 401 error. Ensure the Keycloak password grant in Step 1 succeeds and returns a valid `access_token` before executing the workflow.
 
 Then check the logs for the `sample-server` pod to verify headers were propagated:
 ```bash
 oc logs -n sonataflow-infra -l app=sample-server
 ```
 
-Expected output shows each endpoint receiving the appropriate authorization header:
+Expected output shows each endpoint receiving the propagated authorization headers:
 ```
 ================ Headers for first ================
-Authorization: Bearer FIRST
+X-Authorization-Oauth2: <keycloak-jwt>
+X-Authorization-Simplebearertoken: test-simple-bearer-token-value
 ...
 ================ Headers for other ================
-Authorization: Bearer <valid token>
+X-Authorization-Oauth2: <keycloak-jwt>
+X-Authorization-Simplebearertoken: test-simple-bearer-token-value
 ...
 ================ Headers for simple ================
-Authorization: Bearer SIMPLE
+X-Authorization-Oauth2: <keycloak-jwt>
+X-Authorization-Simplebearertoken: test-simple-bearer-token-value
 ...
 ```
