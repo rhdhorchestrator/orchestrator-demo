@@ -1,0 +1,60 @@
+id: token-propagation
+version: "1.0"
+specVersion: "0.8"
+name: "Token Propagation"
+description: Propagate token
+functions:
+  - name: getWithBearerTokenSecurityScheme
+    operation: specs/sample-server.yaml#getWithBearerTokenSecurityScheme
+  - name: getWithOtherBearerTokenSecurityScheme
+    operation: specs/sample-server.yaml#getWithOtherBearerTokenSecurityScheme
+  - name: getWithSimpleBearerTokenSecurityScheme
+    operation: specs/sample-server.yaml#getWithSimpleBearerTokenSecurityScheme
+  - name: print
+    type: custom
+    operation: sysout
+  - name: extractUser
+    type: custom
+    operation: jwt-parser:extractUser
+  - name: successResult
+    type: expression
+    operation: '{
+        "result": {
+          "completedWith":"success",
+          "message": "Token propagated, check the simple server logs: " + $WORKFLOW.identity,
+          "outputs":[]
+        }
+      }'
+start: "Print inputs"
+states:
+  - name: Print inputs
+    type: operation
+    actions:
+      - name: print
+        functionRef:
+          refName: print
+          arguments:
+            message: '${"Identity: " + $WORKFLOW.identity }'
+      - name: extractUser
+        functionRef:
+          refName: extractUser
+          arguments:
+            token: '${ $WORKFLOW.headers."X-Authorization-Oauth2" }'
+      - name: printExtractedUser
+        functionRef:
+          refName: print
+          arguments:
+            message: '${"Extracted User: " + .preferred_username }'
+      - name: "getWithBearerTokenSecurityScheme"
+        functionRef:
+          refName: getWithBearerTokenSecurityScheme
+      - name: "getWithOtherBearerTokenSecurityScheme"
+        functionRef:
+          refName: getWithOtherBearerTokenSecurityScheme
+      - name: "getWithSimpleBearerTokenSecurityScheme"
+        functionRef:
+          refName: getWithSimpleBearerTokenSecurityScheme
+      - name: setOutput
+        functionRef:
+          refName: successResult
+    end: true

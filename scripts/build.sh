@@ -6,8 +6,8 @@ set -euo pipefail
 script_name="${BASH_SOURCE:-$0}"
 
 # Default container images
-DEFAULT_BUILDER_IMAGE="registry.redhat.io/openshift-serverless-1/logic-swf-builder-rhel9:1.37.0-19"
-DEFAULT_RUNTIME_IMAGE="registry.access.redhat.com/ubi9/openjdk-17:1.21-2"
+DEFAULT_BUILDER_IMAGE="registry.redhat.io/openshift-serverless-1/logic-swf-builder-rhel9:1.37.1"
+DEFAULT_RUNTIME_IMAGE="registry.access.redhat.com/ubi9/openjdk-17-runtime:1.23"
 
 # Logger functions
 RED='\033[0;31m'

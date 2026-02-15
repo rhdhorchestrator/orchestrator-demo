@@ -1,0 +1,68 @@
+apiVersion: v1
+data:
+  sample-server.yaml: |
+    openapi: 3.0.3
+    info:
+      title: Simple server API
+      description: |-
+        Simple server API
+      version: 1.0.0
+    tags:
+      - name: Simple server API
+        description: Simple server API
+    servers:
+      - url: /
+    paths:
+      /first:
+        get:
+          summary: Send requests to simple server
+          description: Send requests to simple server to check the auth headers
+          operationId: getWithBearerTokenSecurityScheme
+          responses:
+            "200":
+              description: Successful operation
+          security:
+            - BearerToken: []
+      /other:
+        get:
+          summary: Send requests to simple server with another security scheme
+          description: Send requests to simple server to check the auth header
+          operationId: getWithOtherBearerTokenSecurityScheme
+          responses:
+            "200":
+              description: Successful operation
+          security:
+            - BearerTokenOther: []
+      /simple:
+        get:
+          summary: Send requests to simple server with simple JWT security scheme
+          description: Send requests to simple server to check the auth header
+          operationId: getWithSimpleBearerTokenSecurityScheme
+          responses:
+            "200":
+              description: Successful operation
+          security:
+            - SimpleBearerToken: []
+    components:
+      securitySchemes:
+        BearerToken:
+         type: oauth2
+         flows:
+           clientCredentials:
+             tokenUrl: http://example-kc-service.keycloak:8080/realms/quarkus/protocol/openid-connect/token
+             scopes: {}
+         description: Bearer Token authentication
+        BearerTokenOther:
+         type: oauth2
+         flows:
+           clientCredentials:
+             tokenUrl: http://example-kc-service.keycloak:8080/realms/quarkus/protocol/openid-connect/token
+             scopes: {}
+         description: Bearer Token authentication
+        SimpleBearerToken:
+         type: http
+         scheme: bearer
+kind: ConfigMap
+metadata:
+  creationTimestamp: null
+  name: 02-token-propagation-resources-specs
