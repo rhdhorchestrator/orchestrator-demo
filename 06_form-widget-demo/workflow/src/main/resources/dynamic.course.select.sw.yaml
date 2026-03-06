@@ -39,6 +39,22 @@ functions:
       {
       "key": "teacher",
       "value": .preferredTeacher
+      },
+      {
+      "key": "hiddenEnrollmentId",
+      "value": .hiddenEnrollmentId
+      },
+      {
+      "key": "hiddenSummarySnapshot",
+      "value": .hiddenSummarySnapshot
+      },
+      {
+      "key": "hiddenStepAuditToken",
+      "value": .hiddenStep.auditToken
+      },
+      {
+      "key": "reviewDetails",
+      "value": .reviewDetails
       }
       ]
       }
