@@ -14,8 +14,9 @@
 
         <skipITs>true</skipITs>
         <surefire-plugin.version>3.5.2</surefire-plugin.version>
-        <quarkus.platform.version>3.8.6.redhat-00005</quarkus.platform.version>
-        <kie.version>9.101.0.redhat-00007</kie.version>
+        <quarkus.platform.version>3.15.4.redhat-00001</quarkus.platform.version>
+        <kie.version>9.103.0.redhat-00004</kie.version>
+        <kie.tooling.version>1.36.0</kie.tooling.version>
     </properties>
     <dependencyManagement>
         <dependencies>
