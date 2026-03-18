@@ -579,6 +579,7 @@ function build_image {
         --build-arg="QUARKUS_EXTENSIONS=${base_quarkus_extensions}"
         --build-arg="MAVEN_ARGS_APPEND=${base_maven_args_append}"
     )
+    [[ -n "${dockerignore_path:-}" && -f "${dockerignore_path}" ]] && container_args+=(--ignorefile="$dockerignore_path")
     [[ -n "${args["builder-image"]:-}" ]] && container_args+=(--build-arg="BUILDER_IMAGE=${args["builder-image"]}")
     [[ -n "${args["runtime-image"]:-}" ]] && container_args+=(--build-arg="RUNTIME_IMAGE=${args["runtime-image"]}")
 
