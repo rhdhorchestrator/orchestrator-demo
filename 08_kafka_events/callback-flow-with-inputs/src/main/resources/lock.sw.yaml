@@ -9,26 +9,26 @@ extensions:
   - extensionid: workflow-output-schema
     outputSchema: schemas/workflow-output-schema.json
 events:
-  - type: lock-event
+  - type: lock-event-with-inputs
     kind: consumed
-    name: lock-event
+    name: lock-event-with-inputs
     source: local
     correlation:
       - contextAttributeName: lockid
-  - type: release-event
+  - type: release-event-with-inputs
     kind: consumed
-    name: release-event
+    name: release-event-with-inputs
     source: local
     correlation:
       - contextAttributeName: lockid
-  - type: notify-event
+  - type: notify-event-with-inputs
     kind: produced
-    name: notify-event
+    name: notify-event-with-inputs
     correlation:
       - contextAttributeName: lockid
-  - type: released-event
+  - type: released-event-with-inputs
     kind: produced
-    name: released-event
+    name: released-event-with-inputs
     correlation:
       - contextAttributeName: lockid
 functions:
@@ -41,7 +41,7 @@ states:
     type: event
     onEvents:
       - eventRefs:
-          - lock-event
+          - lock-event-with-inputs
         actions:
           - functionRef:
               refName: sysLog
@@ -53,7 +53,7 @@ states:
     actions:
       - eventRef:
           data: ${ "Workflow " + $WORKFLOW.id + " has now the lock " + .name }
-          triggerEventRef: notify-event
+          triggerEventRef: notify-event-with-inputs
       - functionRef:
           refName: sysLog
           arguments:
@@ -66,7 +66,7 @@ states:
         refName: sysLog
         arguments:
           message: ${ "Waiting lock release " + .name }
-    eventRef: release-event
+    eventRef: release-event-with-inputs
     timeouts:
       eventTimeout: PT3M
     transition: releaseLock
@@ -79,5 +79,5 @@ states:
             message: ${ "Lock " +  .name +  " released" }
     end:
       produceEvents:
-        - eventRef: released-event
+        - eventRef: released-event-with-inputs
           data: '{test: "testYOOOOOOOOOOOOOOOO"}'

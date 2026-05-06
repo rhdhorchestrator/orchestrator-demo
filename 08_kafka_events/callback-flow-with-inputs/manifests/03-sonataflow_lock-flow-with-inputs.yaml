@@ -27,28 +27,28 @@ spec:
       - contextAttributeName: lockid
       dataOnly: true
       kind: consumed
-      name: lock-event
+      name: lock-event-with-inputs
       source: local
-      type: lock-event
+      type: lock-event-with-inputs
     - correlation:
       - contextAttributeName: lockid
       dataOnly: true
       kind: consumed
-      name: release-event
+      name: release-event-with-inputs
       source: local
-      type: release-event
+      type: release-event-with-inputs
     - correlation:
       - contextAttributeName: lockid
       dataOnly: true
       kind: produced
-      name: notify-event
-      type: notify-event
+      name: notify-event-with-inputs
+      type: notify-event-with-inputs
     - correlation:
       - contextAttributeName: lockid
       dataOnly: true
       kind: produced
-      name: released-event
-      type: released-event
+      name: released-event-with-inputs
+      type: released-event-with-inputs
     functions:
     - name: sysLog
       operation: sysout:INFO
@@ -71,7 +71,7 @@ spec:
         eventDataFilter:
           useData: true
         eventRefs:
-        - lock-event
+        - lock-event-with-inputs
       transition:
         nextState: notifyLock
       type: event
@@ -83,7 +83,7 @@ spec:
           data: ${ "Workflow " + $WORKFLOW.id + " has now the lock " + .name }
           invoke: sync
           resultEventRef: ""
-          triggerEventRef: notify-event
+          triggerEventRef: notify-event-with-inputs
       - actionDataFilter:
           useResults: true
         functionRef:
@@ -103,7 +103,7 @@ spec:
             message: ${ "Waiting lock release " + .name }
           invoke: sync
           refName: sysLog
-      eventRef: release-event
+      eventRef: release-event-with-inputs
       name: waitForRelease
       timeouts:
         eventTimeout: PT3M
@@ -122,7 +122,7 @@ spec:
       end:
         produceEvents:
         - data: '{test: "testYOOOOOOOOOOOOOOOO"}'
-          eventRef: released-event
+          eventRef: released-event-with-inputs
       name: releaseLock
       type: operation
   podTemplate:
