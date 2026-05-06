@@ -14,9 +14,9 @@
 
         <skipITs>true</skipITs>
         <surefire-plugin.version>3.5.2</surefire-plugin.version>
-        <quarkus.platform.version>3.15.4.redhat-00001</quarkus.platform.version>
-        <kie.version>9.103.0.redhat-00004</kie.version>
-        <kie.tooling.version>1.36.0</kie.tooling.version>
+        <quarkus.platform.version>3.20.3.redhat-00006</quarkus.platform.version>
+        <kie.version>9.104.0.redhat-00005</kie.version>
+        <kie.tooling.version>1.37.1</kie.tooling.version>
     </properties>
     <dependencyManagement>
         <dependencies>
@@ -55,7 +55,7 @@
         </dependency>
         <dependency>
             <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-smallrye-reactive-messaging-kafka</artifactId>
+            <artifactId>quarkus-messaging-kafka</artifactId>
         </dependency>
         <dependency>
             <groupId>org.kie</groupId>
