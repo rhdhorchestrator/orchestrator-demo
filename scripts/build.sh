@@ -6,9 +6,8 @@ set -euo pipefail
 script_name="${BASH_SOURCE:-$0}"
 
 # Default container images
-DEFAULT_BUILDER_IMAGE="registry.redhat.io/openshift-serverless-1/logic-swf-builder-rhel9:1.37.1"
-DEFAULT_RUNTIME_IMAGE="registry.access.redhat.com/ubi9/openjdk-17-runtime:1.23"
-
+DEFAULT_BUILDER_IMAGE="registry.redhat.io/openshift-serverless-1/logic-swf-builder-rhel9:1.38.0-3"
+DEFAULT_RUNTIME_IMAGE="registry.access.redhat.com/ubi9/openjdk-17:1.21-2"
 # Logger functions
 RED='\033[0;31m'
 YELLOW='\033[0;33m'
@@ -579,7 +578,7 @@ function build_image {
         --build-arg="QUARKUS_EXTENSIONS=${base_quarkus_extensions}"
         --build-arg="MAVEN_ARGS_APPEND=${base_maven_args_append}"
     )
-    [[ -n "${dockerignore_path:-}" && -f "${dockerignore_path}" ]] && container_args+=(--ignorefile="$dockerignore_path")
+    [[ -n "${dockerignore_path:-}" && -f "${dockerignore_path}" && "$DETECTED_CONTAINER_ENGINE" != "docker" ]] && container_args+=(--ignorefile="$dockerignore_path")
     [[ -n "${args["builder-image"]:-}" ]] && container_args+=(--build-arg="BUILDER_IMAGE=${args["builder-image"]}")
     [[ -n "${args["runtime-image"]:-}" ]] && container_args+=(--build-arg="RUNTIME_IMAGE=${args["runtime-image"]}")
 
